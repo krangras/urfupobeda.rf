@@ -2,7 +2,7 @@
     'use strict';
 
     const SEARCH_ID = 'sidebar-search';
-    const NOTES_BASE = 'https://krangras.github.io/notes/assets/linear-algebra-sem1/';
+    const NOTES_BASE = 'https://raw.githubusercontent.com/krangras/notes/main/assets/linear-algebra-sem1/';
     const NOTES_PAGE = 'https://krangras.github.io/notes/linear-algebra-1.html';
     const FILTER_KEY_PREFIX = 'urfupobeda:ticket-filter:';
 
@@ -342,19 +342,34 @@
                 <div class="ux-notes-figures-grid"></div>`;
             const grid = gallery.querySelector('.ux-notes-figures-grid');
             let loaded = 0;
+            let finished = 0;
+            const finishOne = () => {
+                finished += 1;
+                if (finished !== figures.length) return;
+                if (loaded === 0) {
+                    // Никогда не оставляем пустую белую галерею: встроенные SVG билета остаются fallback.
+                    gallery.remove();
+                    return;
+                }
+                gallery.classList.add('has-loaded-image');
+                if (loaded === figures.length) {
+                    content.querySelectorAll(':scope > .s1-figure').forEach((legacy) => legacy.classList.add('ux-figure-replaced'));
+                }
+            };
             figures.forEach(([file, alt]) => {
                 const figure = document.createElement('figure');
                 figure.className = 'ux-notes-figure';
-                figure.innerHTML = `<img loading="lazy" decoding="async" src="${NOTES_BASE}${file}" alt="${alt}"><figcaption>${alt}</figcaption>`;
+                figure.innerHTML = `<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${NOTES_BASE}${file}" alt="${alt}"><figcaption>${alt}</figcaption>`;
                 const img = figure.querySelector('img');
                 img.addEventListener('load', () => {
-                    loaded += 1;
-                    if (loaded === figures.length) {
-                        gallery.classList.add('has-loaded-image');
-                        content.querySelectorAll(':scope > .s1-figure').forEach((legacy) => legacy.classList.add('ux-figure-replaced'));
-                    }
+                    if (img.naturalWidth > 1 && img.naturalHeight > 1) loaded += 1;
+                    else figure.remove();
+                    finishOne();
                 }, { once: true });
-                img.addEventListener('error', () => figure.remove(), { once: true });
+                img.addEventListener('error', () => {
+                    figure.remove();
+                    finishOne();
+                }, { once: true });
                 grid.appendChild(figure);
             });
 
@@ -373,6 +388,63 @@
             source.innerHTML = `<a href="${NOTES_PAGE}" target="_blank" rel="noopener">Полный конспект ↗</a>`;
             figure.appendChild(source);
         });
+    }
+
+    function openExamPractice() {
+        const tab = document.querySelector('.tab-btn[data-tab="exam-tasks"]');
+        if (tab) tab.click();
+        else {
+            document.querySelectorAll('.tab-pane').forEach((pane) => pane.classList.remove('active-pane'));
+            document.getElementById('exam-tasks-pane')?.classList.add('active-pane');
+        }
+        if (typeof window.closeMobileSidebarAfterNavigation === 'function') window.closeMobileSidebarAfterNavigation();
+        window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 20);
+    }
+
+    window.uxOpenExamPractice = openExamPractice;
+
+    function simplifySidebar() {
+        const ticketList = document.getElementById('sidebar-tickets');
+        if (ticketList) {
+            ticketList.querySelectorAll('.sidebar-module-title').forEach((title) => {
+                const clean = title.textContent.replace(/^\s*Модуль\s+\d+\.\s*/i, '').trim();
+                if (title.textContent !== clean) title.textContent = clean;
+            });
+        }
+
+        const practice = document.getElementById('sidebar-practice');
+        if (practice && !practice.querySelector('.ux-practice-shortcut')) {
+            practice.innerHTML = `
+                <div class="sidebar-item ux-practice-shortcut" role="button" tabindex="0" onclick="window.uxOpenExamPractice()">
+                    <span class="ux-sidebar-item-icon">✎</span>
+                    <span>Практика АГиТДУ · 2 семестр · экзамен</span>
+                </div>`;
+        }
+
+        const archiveTitle = Array.from(document.querySelectorAll('.sidebar-archive-section .sidebar-section-title'))
+            .find((node) => /^\s*Архив\s*$/i.test(node.textContent));
+        const archive = archiveTitle?.closest('.sidebar-archive-section');
+        if (archive) {
+            const control = Array.from(archive.querySelectorAll('.sidebar-item')).find((item) => /Контрольная/i.test(item.textContent));
+            if (control && control.textContent !== '✍️ Контрольная АГиТДУ · 2 семестр') {
+                control.textContent = '✍️ Контрольная АГиТДУ · 2 семестр';
+            }
+            if (!archive.querySelector('.ux-archive-practice')) {
+                const item = document.createElement('div');
+                item.className = 'sidebar-item ux-archive-practice';
+                item.setAttribute('role', 'button');
+                item.setAttribute('tabindex', '0');
+                item.innerHTML = '<span class="ux-sidebar-item-icon">✎</span><span>Практика АГиТДУ · 2 семестр · экзамен</span>';
+                item.addEventListener('click', openExamPractice);
+                item.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openExamPractice();
+                    }
+                });
+                archive.appendChild(item);
+            }
+        }
     }
 
     function commandEntries() {
@@ -714,6 +786,7 @@
         ensureTopLevelTabs();
         polishStaticLabels();
         ensureSidebarTools();
+        simplifySidebar();
         ensureSidebarFooter();
         enhanceAccessibility();
         ensureMobileNav();
@@ -778,6 +851,7 @@
                     if (typeof window.applySidebarSearch === 'function') window.applySidebarSearch();
                     else fallbackSidebarSearch(input.value);
                 }
+                simplifySidebar();
                 enhanceAccessibility();
             });
         });

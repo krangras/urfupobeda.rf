@@ -1851,3 +1851,101 @@ body.ux-reader-mode .ticket.ux-reader-target > .ticket-meta { display: none !imp
 @media (max-width: 900px) {
     .ux-exam-status-strip { grid-template-columns: 1fr; }
 }
+
+
+/* ============================================================
+   V3.2 — bugfixes: layout, quiet sidebar, reliable figures
+   ============================================================ */
+
+/* Prevent the desktop canvas from becoming viewport-width PLUS sidebar width. */
+.main-layout {
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+}
+.main-content {
+    width: auto !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    margin-inline: auto !important;
+}
+.tab-pane,
+.sub-tab-pane,
+.ticket-list,
+#semester1-agidu-list,
+.conspect-content,
+.cheatsheet {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Filters should not float over an opened ticket or create a second sticky header. */
+.ux-ticket-tools {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Sidebar: progress is shown once at the top. Repeating x/y counters add noise. */
+.sidebar-module-meta,
+.sidebar-lesson-step {
+    display: none !important;
+}
+.sidebar-module-header {
+    padding-right: 10px !important;
+}
+.sidebar-module-title {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+#sidebar-practice {
+    margin: 2px 0 7px !important;
+}
+.ux-practice-shortcut,
+.ux-archive-practice {
+    gap: 9px !important;
+    color: var(--ux-text) !important;
+    font-weight: 650 !important;
+    cursor: pointer !important;
+}
+.ux-practice-shortcut {
+    border: 1px solid color-mix(in srgb, var(--ux-primary) 15%, var(--ux-border)) !important;
+    background: color-mix(in srgb, var(--ux-primary-soft) 62%, var(--ux-surface)) !important;
+}
+.ux-practice-shortcut:hover,
+.ux-archive-practice:hover {
+    color: var(--ux-primary-strong) !important;
+}
+.ux-sidebar-item-icon {
+    display: inline-flex;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    background: var(--ux-surface-muted);
+    color: var(--ux-primary-strong);
+    font-size: 11px;
+}
+
+/* Remote illustrations must never reserve a giant empty white box. */
+.ux-notes-figure img {
+    min-height: 0 !important;
+    height: auto !important;
+    aspect-ratio: auto !important;
+}
+.ux-notes-figures-grid:empty,
+.ux-notes-figures:has(.ux-notes-figures-grid:empty) {
+    display: none !important;
+}
+
+@media (max-width: 1080px) {
+    .main-layout { width: auto !important; }
+    .main-content { width: auto !important; max-width: 100% !important; }
+}

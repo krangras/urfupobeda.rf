@@ -1,4 +1,4 @@
-const CACHE = 'urfupobeda-ui-v3';
+const CACHE = 'urfupobeda-ui-v4';
 const SCOPE = new URL('./', self.location.href);
 const FILES = [
   './',
