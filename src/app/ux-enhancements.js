@@ -1,876 +1,471 @@
 (() => {
-    'use strict';
+  'use strict';
 
-    const SEARCH_ID = 'sidebar-search';
-    const NOTES_BASE = 'https://raw.githubusercontent.com/krangras/notes/main/assets/linear-algebra-sem1/';
-    const NOTES_PAGE = 'https://krangras.github.io/notes/linear-algebra-1.html';
-    const FILTER_KEY_PREFIX = 'urfupobeda:ticket-filter:';
+  const SEARCH_ID = 'sidebar-search';
+  const NOTES_PAGE = 'https://krangras.github.io/notes/linear-algebra-1.html';
+  const NOTES_PAGES_BASE = 'https://krangras.github.io/notes/assets/linear-algebra-sem1/';
+  const NOTES_RAW_BASE = 'https://raw.githubusercontent.com/krangras/notes/main/assets/linear-algebra-sem1/';
+  const FILTER_KEY_PREFIX = 'urfupobeda:ticket-filter:v4:';
 
-    const SEM1_FIGURES = {
-        2: [
-            ['01-complex-modulus-argument.svg', 'Геометрический смысл модуля и аргумента комплексного числа']
-        ],
-        4: [
-            ['02-determinant-order-2.svg', 'Определитель второго порядка'],
-            ['03-sarrus-rule.svg', 'Правило Саррюса для определителя третьего порядка']
-        ],
-        9: [
-            ['04-vector-basis-decomposition.svg', 'Разложение вектора по базису']
-        ],
-        10: [
-            ['06-right-left-triples.svg', 'Правая и левая тройки векторов'],
-            ['05-vector-product-area.svg', 'Геометрический смысл векторного произведения']
-        ],
-        12: [
-            ['07-mixed-product-geometry.svg', 'Параллелепипед и пирамида, построенные на трёх векторах']
-        ],
-        14: [
-            ['08-line-normal-vector.svg', 'Нормальный вектор прямой на плоскости']
-        ],
-        15: [
-            ['09-point-to-line-distance.svg', 'Расстояние от точки до прямой'],
-            ['10-parallel-lines-distance.svg', 'Расстояние между параллельными прямыми']
-        ],
-        16: [
-            ['11-ellipse-foci.svg', 'Эллипс и его фокусы'],
-            ['12-ellipse-canonical.svg', 'Канонический чертёж эллипса']
-        ],
-        17: [
-            ['13-hyperbola-foci.svg', 'Гипербола и её фокусы'],
-            ['14-hyperbola-canonical.svg', 'Канонический чертёж гиперболы']
-        ],
-        18: [
-            ['15-parabola-focus-directrix.svg', 'Парабола, фокус и директриса'],
-            ['16-parabola-canonical.svg', 'Канонический чертёж параболы']
-        ]
+  const FIGURES = {
+    2: [['01-complex-modulus-argument.svg', 'Геометрический смысл модуля и аргумента комплексного числа']],
+    4: [['02-determinant-order-2.svg', 'Определитель второго порядка'], ['03-sarrus-rule.svg', 'Правило Саррюса']],
+    9: [['04-vector-basis-decomposition.svg', 'Разложение вектора по базису']],
+    10: [['06-right-left-triples.svg', 'Правая и левая тройки векторов'], ['05-vector-product-area.svg', 'Геометрический смысл векторного произведения']],
+    12: [['07-mixed-product-geometry.svg', 'Параллелепипед и пирамида, построенные на трёх векторах']],
+    14: [['08-line-normal-vector.svg', 'Нормальный вектор прямой']],
+    15: [['09-point-to-line-distance.svg', 'Расстояние от точки до прямой'], ['10-parallel-lines-distance.svg', 'Расстояние между параллельными прямыми']],
+    16: [['11-ellipse-foci.svg', 'Эллипс и его фокусы'], ['12-ellipse-canonical.svg', 'Канонический чертёж эллипса']],
+    17: [['13-hyperbola-foci.svg', 'Гипербола и её фокусы'], ['14-hyperbola-canonical.svg', 'Канонический чертёж гиперболы']],
+    18: [['15-parabola-focus-directrix.svg', 'Парабола, фокус и директриса'], ['16-parabola-canonical.svg', 'Канонический чертёж параболы']]
+  };
+
+  const normalize = (value) => String(value || '')
+    .toLocaleLowerCase('ru-RU')
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const iconSearch = () => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.4-3.4"></path></svg>';
+
+  function isTypingTarget(target) {
+    return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || Boolean(target?.isContentEditable);
+  }
+
+  // Runtime safety net for already-corrupted HTML cached by an older patch.
+  function decodeLatin1Utf8(text) {
+    if (!/[ÃÂÐÑ]/.test(text)) return text;
+    const chars = Array.from(text);
+    if (chars.some((ch) => ch.charCodeAt(0) > 255)) return text;
+    try {
+      const bytes = Uint8Array.from(chars, (ch) => ch.charCodeAt(0));
+      const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      return decoded.includes('\uFFFD') ? text : decoded;
+    } catch (_) {
+      return text;
+    }
+  }
+
+  function repairMojibake(root = document.body) {
+    if (!root || typeof document.createTreeWalker !== 'function') return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const parent = node.parentElement;
+        if (!parent || ['SCRIPT', 'STYLE', 'TEXTAREA', 'CODE', 'PRE'].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
+        return /[ÃÂÐÑ]/.test(node.nodeValue || '') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach((node) => {
+      const source = node.nodeValue || '';
+      // Repair only latin-1-sized runs so normal Cyrillic around them stays untouched.
+      const repaired = source.replace(/[\x00-\xFF]+/g, (run) => decodeLatin1Utf8(run));
+      if (repaired !== source) node.nodeValue = repaired;
+    });
+    root.querySelectorAll?.('[title],[placeholder],[aria-label]').forEach((el) => {
+      ['title', 'placeholder', 'aria-label'].forEach((attr) => {
+        const value = el.getAttribute(attr);
+        if (!value || !/[ÃÂÐÑ]/.test(value)) return;
+        const repaired = value.replace(/[\x00-\xFF]+/g, (run) => decodeLatin1Utf8(run));
+        if (repaired !== value) el.setAttribute(attr, repaired);
+      });
+    });
+  }
+
+  function removeChangelogNoise() {
+    const selectors = [
+      '.changelog', '#changelog', '.changelog-btn', '.version-badge', '.version-label',
+      '[data-changelog]', '[data-version-badge]', '[aria-label*="changelog" i]', '[title*="changelog" i]'
+    ];
+    document.querySelectorAll(selectors.join(',')).forEach((el) => el.remove());
+    const header = document.querySelector('.hero')?.parentElement || document.body;
+    header.querySelectorAll('button,a,span,div').forEach((el) => {
+      if (el.children.length) return;
+      const t = el.textContent.trim();
+      if (/^v\d+(?:\.\d+){1,3}$/i.test(t) || /^changelog$/i.test(t) || /^история изменений$/i.test(t)) el.remove();
+    });
+  }
+
+  function ensureSidebarTools() {
+    const inner = document.querySelector('.sidebar-content-inner');
+    if (!inner || inner.querySelector('.ux-sidebar-tools')) return;
+    const tools = document.createElement('div');
+    tools.className = 'ux-sidebar-tools';
+    tools.innerHTML = `
+      <label class="ux-sidebar-search" for="${SEARCH_ID}">
+        ${iconSearch()}
+        <input id="${SEARCH_ID}" type="search" autocomplete="off" spellcheck="false" placeholder="Билет, тема, раздел…">
+        <button class="ux-search-clear" type="button" aria-label="Очистить поиск">×</button>
+      </label>`;
+    const progress = inner.querySelector('.sidebar-progress');
+    if (progress) progress.insertAdjacentElement('beforebegin', tools);
+    else inner.prepend(tools);
+
+    const input = tools.querySelector('input');
+    const clear = tools.querySelector('.ux-search-clear');
+    const apply = () => {
+      tools.classList.toggle('has-value', Boolean(input.value));
+      const q = normalize(input.value);
+      document.querySelectorAll('#sidebar .sidebar-item, #sidebar .sidebar-lesson').forEach((item) => {
+        item.classList.toggle('ux-search-hidden', Boolean(q && !normalize(item.textContent).includes(q)));
+      });
+      document.querySelectorAll('#sidebar .sidebar-module').forEach((module) => {
+        const hits = module.querySelectorAll('.sidebar-lesson:not(.ux-search-hidden)').length;
+        const own = normalize(module.querySelector('.sidebar-module-title')?.textContent).includes(q);
+        module.classList.toggle('ux-search-hidden', Boolean(q && !hits && !own));
+        if (q && (hits || own)) module.querySelector('.sidebar-module-body')?.style.removeProperty('display');
+      });
     };
-
-    const iconSearch = () => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg>';
-
-    const normalize = (value) => String(value || '')
-        .toLocaleLowerCase('ru-RU')
-        .replace(/ё/g, 'е')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    const isTypingTarget = (target) => target instanceof HTMLInputElement
-        || target instanceof HTMLTextAreaElement
-        || target instanceof HTMLSelectElement
-        || Boolean(target?.isContentEditable);
-
-    function ensureSidebarTools() {
-        const inner = document.querySelector('.sidebar-content-inner');
-        if (!inner || document.querySelector('.ux-sidebar-tools')) return;
-
-        const tools = document.createElement('div');
-        tools.className = 'ux-sidebar-tools';
-        tools.innerHTML = `
-            <div class="ux-sidebar-search">
-                ${iconSearch()}
-                <input id="${SEARCH_ID}" type="search" autocomplete="off" spellcheck="false"
-                    placeholder="Билет, тема, раздел…" aria-label="Поиск по навигации">
-                <button class="ux-search-clear" type="button" aria-label="Очистить поиск" title="Очистить">×</button>
-            </div>
-            <div class="ux-sidebar-hint">
-                <span>Поиск по материалам</span>
-                <span><span class="ux-kbd">/</span> <span class="ux-kbd">Esc</span></span>
-            </div>`;
-
-        const pinRow = inner.querySelector('.sidebar-pin-row');
-        if (pinRow) pinRow.insertAdjacentElement('afterend', tools);
-        else inner.prepend(tools);
-
-        const input = tools.querySelector(`#${SEARCH_ID}`);
-        const wrap = tools.querySelector('.ux-sidebar-search');
-        const clear = tools.querySelector('.ux-search-clear');
-
-        const apply = () => {
-            wrap.classList.toggle('has-value', Boolean(input.value));
-            if (typeof window.applySidebarSearch === 'function') window.applySidebarSearch();
-            else fallbackSidebarSearch(input.value);
-        };
-
-        input.addEventListener('input', apply);
-        input.addEventListener('keydown', (event) => {
-            if (event.key !== 'Escape') return;
-            event.preventDefault();
-            input.value = '';
-            apply();
-            input.blur();
-        });
-        clear.addEventListener('click', () => {
-            input.value = '';
-            apply();
-            input.focus();
-        });
-    }
-
-    function fallbackSidebarSearch(value) {
-        const query = normalize(value);
-        const sidebar = document.getElementById('sidebar');
-        if (!sidebar) return;
-
-        sidebar.querySelectorAll('.sidebar-item, .sidebar-lesson').forEach((item) => {
-            const visible = !query || normalize(item.textContent).includes(query);
-            item.classList.toggle('sidebar-search-hidden', !visible);
-            item.classList.toggle('sidebar-search-hit', Boolean(query && visible));
-        });
-
-        sidebar.querySelectorAll('.sidebar-module').forEach((module) => {
-            const visibleChildren = module.querySelectorAll('.sidebar-lesson:not(.sidebar-search-hidden)').length;
-            module.classList.toggle('sidebar-search-hidden', Boolean(query && visibleChildren === 0));
-            if (query && visibleChildren) {
-                const body = module.querySelector('.sidebar-module-body');
-                if (body) body.style.display = '';
-            }
-        });
-    }
-
-    function ensureSidebarFooter() {
-        const inner = document.querySelector('.sidebar-content-inner');
-        if (!inner || inner.querySelector('.ux-sidebar-footer')) return;
-        const footer = document.createElement('div');
-        footer.className = 'ux-sidebar-footer';
-        footer.innerHTML = 'Быстрые клавиши: <span class="ux-kbd">/</span> поиск · <span class="ux-kbd">Ctrl K</span> навигация.';
-        inner.appendChild(footer);
-    }
-
-    function enhanceAccessibility() {
-        document.querySelectorAll('.tab-btn').forEach((el) => {
-            el.setAttribute('role', 'tab');
-            if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-        });
-        document.querySelectorAll('.sub-tab-btn, .sidebar-item, .sidebar-lesson, .sidebar-module-header').forEach((el) => {
-            if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-            if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
-        });
-    }
-
-    function parseTicketStep(ticket) {
-        const text = ticket.querySelector('.ticket-meta')?.textContent || '';
-        const match = text.match(/шаг\s*:?\s*(\d+)\s*\/\s*(\d+)/i);
-        if (!match) return { step: 0, total: 5 };
-        return { step: Number(match[1]) || 0, total: Number(match[2]) || 5 };
-    }
-
-    function getTicketState(ticket) {
-        const { step, total } = parseTicketStep(ticket);
-        if (step >= total) return 'mastered';
-        if (step === 0) return ticket.classList.contains('ready') ? 'new' : 'new';
-        if (ticket.classList.contains('ready')) return 'due';
-        return 'learning';
-    }
-
-    function enhanceTicketStates(container) {
-        container.querySelectorAll('.ticket').forEach((ticket) => {
-            const { step, total } = parseTicketStep(ticket);
-            ticket.classList.toggle('ux-mastered', step >= total);
-            ticket.dataset.uxState = getTicketState(ticket);
-        });
-    }
-
-    function applyTicketFilter(container, filter, persist = true) {
-        enhanceTicketStates(container);
-        let shown = 0;
-        let total = 0;
-        container.querySelectorAll('.ticket').forEach((ticket) => {
-            total += 1;
-            const state = ticket.dataset.uxState || getTicketState(ticket);
-            const show = filter === 'all'
-                || (filter === 'due' && state === 'due')
-                || (filter === 'learning' && (state === 'learning' || state === 'due'))
-                || (filter === 'mastered' && state === 'mastered')
-                || (filter === 'new' && state === 'new');
-            ticket.classList.toggle('ux-filter-hidden', !show);
-            if (show) shown += 1;
-        });
-
-        const tools = container.querySelector(':scope > .ux-ticket-tools');
-        if (tools) {
-            tools.querySelectorAll('.ux-filter-btn').forEach((btn) => btn.classList.toggle('active', btn.dataset.filter === filter));
-            const count = tools.querySelector('.ux-ticket-count');
-            if (count) {
-                const nextCount = filter === 'all' ? `${total} билетов` : `${shown} из ${total}`;
-                if (count.textContent !== nextCount) count.textContent = nextCount;
-            }
-        }
-        container.dataset.uxFilter = filter;
-        if (persist && container.id) localStorage.setItem(`${FILTER_KEY_PREFIX}${container.id}`, filter);
-    }
-
-    function ensureTicketTools(container) {
-        if (!container || container.querySelector(':scope > .ux-ticket-tools') || !container.querySelector('.ticket')) return;
-        const tools = document.createElement('div');
-        tools.className = 'ux-ticket-tools';
-        tools.innerHTML = `
-            <span class="ux-filter-label">Показать</span>
-            <button type="button" class="ux-filter-btn active" data-filter="all">Все</button>
-            <button type="button" class="ux-filter-btn" data-filter="due">К повторению</button>
-            <button type="button" class="ux-filter-btn" data-filter="learning">В процессе</button>
-            <button type="button" class="ux-filter-btn" data-filter="mastered">Освоено</button>
-            <button type="button" class="ux-filter-btn" data-filter="new">Новые</button>
-            <span class="ux-ticket-count"></span>`;
-
-        const firstTicket = container.querySelector('.ticket');
-        firstTicket.insertAdjacentElement('beforebegin', tools);
-        tools.addEventListener('click', (event) => {
-            const button = event.target.closest('.ux-filter-btn');
-            if (!button) return;
-            applyTicketFilter(container, button.dataset.filter || 'all');
-        });
-        const saved = container.id ? localStorage.getItem(`${FILTER_KEY_PREFIX}${container.id}`) : null;
-        applyTicketFilter(container, ['all', 'due', 'learning', 'mastered', 'new'].includes(saved) ? saved : 'all', false);
-    }
-
-    function metricsFromTickets(container) {
-        const tickets = Array.from(container?.querySelectorAll('.ticket') || []);
-        const metrics = { total: tickets.length, mastered: 0, learning: 0, due: 0, fresh: 0 };
-        tickets.forEach((ticket) => {
-            const state = getTicketState(ticket);
-            if (state === 'mastered') metrics.mastered += 1;
-            else if (state === 'new') metrics.fresh += 1;
-            else metrics.learning += 1;
-            if (state === 'due') metrics.due += 1;
-        });
-        return metrics;
-    }
-
-    function subjectDashboardConfig(pane) {
-        if (pane?.id === 'semester1-pane') {
-            return {
-                kicker: '1 семестр · экзамен',
-                title: 'Алгебра, геометрия и теория дифференциальных уравнений',
-                subtitle: '24 билета, интервальные повторения и иллюстрации из полного конспекта.',
-                list: document.getElementById('semester1-agidu-list'),
-                source: NOTES_PAGE
-            };
-        }
-        return {
-            kicker: '2 семестр · экзамен',
-            title: 'Билеты без хаоса',
-            subtitle: 'Сначала то, что пора повторить. Остальное можно отфильтровать одним нажатием.',
-            list: document.getElementById('list'),
-            source: null
-        };
-    }
-
-    function ensureStudyDashboard(pane) {
-        if (!pane || !['exam-pane', 'semester1-pane'].includes(pane.id)) return;
-        const mount = pane.id === 'semester1-pane' ? (document.getElementById('semester1-agidu') || pane) : pane;
-        if (mount.querySelector(':scope > .ux-study-dashboard')) return;
-        const config = subjectDashboardConfig(pane);
-        if (!config.list?.querySelector('.ticket')) return;
-
-        const dashboard = document.createElement('section');
-        dashboard.className = 'ux-study-dashboard';
-        dashboard.dataset.forPane = pane.id;
-        dashboard.innerHTML = `
-            <div class="ux-dashboard-main">
-                <div class="ux-dashboard-kicker">${config.kicker}</div>
-                <h2 class="ux-dashboard-title">${config.title}</h2>
-                <div class="ux-dashboard-subtitle">${config.subtitle}</div>
-                <div class="ux-dashboard-actions">
-                    <button type="button" class="ux-primary-btn" data-ux-action="continue">Продолжить подготовку</button>
-                    <button type="button" class="ux-secondary-btn" data-ux-action="command">Быстрый переход <span class="ux-kbd">Ctrl K</span></button>
-                    ${config.source ? `<a class="ux-secondary-btn ux-dashboard-link" href="${config.source}" target="_blank" rel="noopener">Полный конспект ↗</a>` : ''}
-                </div>
-            </div>
-            <div class="ux-dashboard-side" aria-label="Прогресс по билетам">
-                <div class="ux-metric"><div class="ux-metric-value" data-metric="mastered">0</div><div class="ux-metric-label">освоено</div></div>
-                <div class="ux-metric"><div class="ux-metric-value" data-metric="learning">0</div><div class="ux-metric-label">в процессе</div></div>
-                <div class="ux-metric"><div class="ux-metric-value" data-metric="due">0</div><div class="ux-metric-label">пора повторить</div></div>
-                <div class="ux-metric"><div class="ux-metric-value" data-metric="total">0</div><div class="ux-metric-label">всего билетов</div></div>
-            </div>`;
-
-        mount.prepend(dashboard);
-        dashboard.addEventListener('click', (event) => {
-            const action = event.target.closest('[data-ux-action]')?.dataset.uxAction;
-            if (action === 'command') openCommandPalette();
-            if (action === 'continue') scrollToNextTicket(config.list);
-        });
-        refreshDashboard(dashboard, config.list);
-    }
-
-    function refreshDashboard(dashboard, list) {
-        if (!dashboard || !list) return;
-        const metrics = metricsFromTickets(list);
-        ['mastered', 'learning', 'due', 'total'].forEach((key) => {
-            const node = dashboard.querySelector(`[data-metric="${key}"]`);
-            if (node && node.textContent !== String(metrics[key])) node.textContent = String(metrics[key]);
-        });
-        const continueButton = dashboard.querySelector('[data-ux-action="continue"]');
-        if (continueButton) {
-            const nextLabel = metrics.due ? `Повторить сейчас · ${metrics.due}` : 'Продолжить подготовку';
-            if (continueButton.textContent !== nextLabel) continueButton.textContent = nextLabel;
-        }
-    }
-
-    function scrollToNextTicket(container) {
-        if (!container) return;
-        enhanceTicketStates(container);
-        const filter = container.dataset.uxFilter || 'all';
-        const candidates = Array.from(container.querySelectorAll('.ticket:not(.ux-filter-hidden)'));
-        const target = candidates.find((ticket) => ticket.dataset.uxState === 'due')
-            || candidates.find((ticket) => ticket.dataset.uxState === 'learning')
-            || candidates.find((ticket) => ticket.dataset.uxState === 'new')
-            || candidates[0];
-        if (!target) return;
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        target.classList.add('ux-ticket-pulse');
-        window.setTimeout(() => target.classList.remove('ux-ticket-pulse'), 1200);
-        if (filter !== 'all' && target.classList.contains('ux-filter-hidden')) applyTicketFilter(container, 'all');
-    }
-
-    function ensureSemester1Figures() {
-        const list = document.getElementById('semester1-agidu-list');
-        if (!list) return;
-        list.querySelectorAll('.ticket').forEach((ticket) => {
-            const rawIdx = ticket.dataset.idx;
-            const idx = rawIdx === undefined ? null : Number(rawIdx);
-            const figures = SEM1_FIGURES[idx];
-            if (!figures?.length) return;
-            const content = ticket.querySelector('.conspect-content');
-            if (!content || content.querySelector('.ux-notes-figures')) return;
-
-            const gallery = document.createElement('section');
-            gallery.className = `ux-notes-figures ${figures.length > 1 ? 'is-grid' : ''}`;
-            gallery.innerHTML = `
-                <div class="ux-notes-figures-head">
-                    <div><strong>Иллюстрации к билету</strong><span>из полного конспекта 1 семестра</span></div>
-                    <a href="${NOTES_PAGE}" target="_blank" rel="noopener">Открыть источник ↗</a>
-                </div>
-                <div class="ux-notes-figures-grid"></div>`;
-            const grid = gallery.querySelector('.ux-notes-figures-grid');
-            let loaded = 0;
-            let finished = 0;
-            const finishOne = () => {
-                finished += 1;
-                if (finished !== figures.length) return;
-                if (loaded === 0) {
-                    // Никогда не оставляем пустую белую галерею: встроенные SVG билета остаются fallback.
-                    gallery.remove();
-                    return;
-                }
-                gallery.classList.add('has-loaded-image');
-                if (loaded === figures.length) {
-                    content.querySelectorAll(':scope > .s1-figure').forEach((legacy) => legacy.classList.add('ux-figure-replaced'));
-                }
-            };
-            figures.forEach(([file, alt]) => {
-                const figure = document.createElement('figure');
-                figure.className = 'ux-notes-figure';
-                figure.innerHTML = `<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${NOTES_BASE}${file}" alt="${alt}"><figcaption>${alt}</figcaption>`;
-                const img = figure.querySelector('img');
-                img.addEventListener('load', () => {
-                    if (img.naturalWidth > 1 && img.naturalHeight > 1) loaded += 1;
-                    else figure.remove();
-                    finishOne();
-                }, { once: true });
-                img.addEventListener('error', () => {
-                    figure.remove();
-                    finishOne();
-                }, { once: true });
-                grid.appendChild(figure);
-            });
-
-            const heading = content.querySelector('h3');
-            if (heading) heading.insertAdjacentElement('afterend', gallery);
-            else content.prepend(gallery);
-        });
-    }
-
-    function ensureFigureSourceLinks() {
-        document.querySelectorAll('.s1-figure:not([data-ux-source])').forEach((figure) => {
-            figure.dataset.uxSource = '1';
-            if (figure.querySelector('.ux-figure-source')) return;
-            const source = document.createElement('div');
-            source.className = 'ux-figure-source';
-            source.innerHTML = `<a href="${NOTES_PAGE}" target="_blank" rel="noopener">Полный конспект ↗</a>`;
-            figure.appendChild(source);
-        });
-    }
-
-    function openExamPractice() {
-        const tab = document.querySelector('.tab-btn[data-tab="exam-tasks"]');
-        if (tab) tab.click();
-        else {
-            document.querySelectorAll('.tab-pane').forEach((pane) => pane.classList.remove('active-pane'));
-            document.getElementById('exam-tasks-pane')?.classList.add('active-pane');
-        }
-        if (typeof window.closeMobileSidebarAfterNavigation === 'function') window.closeMobileSidebarAfterNavigation();
-        window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 20);
-    }
-
-    window.uxOpenExamPractice = openExamPractice;
-
-    function simplifySidebar() {
-        const ticketList = document.getElementById('sidebar-tickets');
-        if (ticketList) {
-            ticketList.querySelectorAll('.sidebar-module-title').forEach((title) => {
-                const clean = title.textContent.replace(/^\s*Модуль\s+\d+\.\s*/i, '').trim();
-                if (title.textContent !== clean) title.textContent = clean;
-            });
-        }
-
-        const practice = document.getElementById('sidebar-practice');
-        if (practice && !practice.querySelector('.ux-practice-shortcut')) {
-            practice.innerHTML = `
-                <div class="sidebar-item ux-practice-shortcut" role="button" tabindex="0" onclick="window.uxOpenExamPractice()">
-                    <span class="ux-sidebar-item-icon">✎</span>
-                    <span>Практика АГиТДУ · 2 семестр · экзамен</span>
-                </div>`;
-        }
-
-        const archiveTitle = Array.from(document.querySelectorAll('.sidebar-archive-section .sidebar-section-title'))
-            .find((node) => /^\s*Архив\s*$/i.test(node.textContent));
-        const archive = archiveTitle?.closest('.sidebar-archive-section');
-        if (archive) {
-            const control = Array.from(archive.querySelectorAll('.sidebar-item')).find((item) => /Контрольная/i.test(item.textContent));
-            if (control && control.textContent !== '✍️ Контрольная АГиТДУ · 2 семестр') {
-                control.textContent = '✍️ Контрольная АГиТДУ · 2 семестр';
-            }
-            if (!archive.querySelector('.ux-archive-practice')) {
-                const item = document.createElement('div');
-                item.className = 'sidebar-item ux-archive-practice';
-                item.setAttribute('role', 'button');
-                item.setAttribute('tabindex', '0');
-                item.innerHTML = '<span class="ux-sidebar-item-icon">✎</span><span>Практика АГиТДУ · 2 семестр · экзамен</span>';
-                item.addEventListener('click', openExamPractice);
-                item.addEventListener('keydown', (event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        openExamPractice();
-                    }
-                });
-                archive.appendChild(item);
-            }
-        }
-    }
-
-    function commandEntries() {
-        const entries = [
-            { icon: '②', title: 'Билеты · 2 семестр', meta: 'Экзамен', run: () => document.querySelector('.tab-btn[data-tab="exam"]')?.click() },
-            { icon: '①', title: 'Алгебра, геометрия и ТДУ · 1 семестр', meta: '24 билета', run: () => {
-                if (typeof window.switchToSemester1Subtab === 'function') window.switchToSemester1Subtab('agidu');
-                else document.querySelector('[data-semester1-subtab="agidu"]')?.click();
-            } },
-            { icon: '✎', title: 'Задачи экзамена', meta: 'Практика', run: () => document.querySelector('.tab-btn[data-tab="exam-tasks"]')?.click() },
-            { icon: 'φ', title: 'Физика НТК', meta: 'Теория и задачи', run: () => document.querySelector('.tab-btn[data-tab="physics-ntk"]')?.click() },
-            { icon: '∫', title: 'Математический анализ · интегралы', meta: '1 семестр', run: () => document.querySelector('[data-semester1-subtab="math"]')?.click() },
-            { icon: '⌘', title: 'Поиск в левом меню', meta: 'Горячая клавиша /', run: focusSidebarSearch }
-        ];
-
-        const seen = new Set(entries.map((e) => normalize(e.title)));
-        document.querySelectorAll('.sidebar-lesson, .sidebar-item').forEach((node) => {
-            const title = node.textContent.replace(/\s+/g, ' ').trim();
-            if (!title || seen.has(normalize(title))) return;
-            seen.add(normalize(title));
-            entries.push({ icon: '•', title, meta: 'Навигация', run: () => node.click() });
-        });
-        return entries;
-    }
-
-    let paletteEntries = [];
-    let paletteActiveIndex = 0;
-
-    function ensureCommandPalette() {
-        if (document.getElementById('ux-command-backdrop')) return;
-        const backdrop = document.createElement('div');
-        backdrop.id = 'ux-command-backdrop';
-        backdrop.className = 'ux-command-backdrop';
-        backdrop.setAttribute('aria-hidden', 'true');
-        backdrop.innerHTML = `
-            <div class="ux-command" role="dialog" aria-modal="true" aria-label="Быстрый переход">
-                <div class="ux-command-search">${iconSearch()}<input id="ux-command-input" autocomplete="off" spellcheck="false" placeholder="Куда перейти?"></div>
-                <div class="ux-command-results"></div>
-                <div class="ux-command-footer"><span>↑ ↓ выбрать · Enter открыть</span><span>Esc закрыть</span></div>
-            </div>`;
-        document.body.appendChild(backdrop);
-        const input = backdrop.querySelector('#ux-command-input');
-        input.addEventListener('input', () => renderCommandResults(input.value));
-        backdrop.addEventListener('click', (event) => {
-            if (event.target === backdrop) closeCommandPalette();
-            const item = event.target.closest('.ux-command-item');
-            if (item) activateCommand(Number(item.dataset.index));
-        });
-        input.addEventListener('keydown', (event) => {
-            const count = backdrop.querySelectorAll('.ux-command-item').length;
-            if (event.key === 'ArrowDown' && count) {
-                event.preventDefault();
-                paletteActiveIndex = (paletteActiveIndex + 1) % count;
-                updateCommandActive();
-            } else if (event.key === 'ArrowUp' && count) {
-                event.preventDefault();
-                paletteActiveIndex = (paletteActiveIndex - 1 + count) % count;
-                updateCommandActive();
-            } else if (event.key === 'Enter' && count) {
-                event.preventDefault();
-                const item = backdrop.querySelectorAll('.ux-command-item')[paletteActiveIndex];
-                if (item) activateCommand(Number(item.dataset.index));
-            } else if (event.key === 'Escape') {
-                event.preventDefault();
-                closeCommandPalette();
-            }
-        });
-    }
-
-    function renderCommandResults(query = '') {
-        const results = document.querySelector('.ux-command-results');
-        if (!results) return;
-        const q = normalize(query);
-        paletteEntries = commandEntries().filter((entry) => !q || normalize(`${entry.title} ${entry.meta}`).includes(q));
-        paletteActiveIndex = 0;
-        if (!paletteEntries.length) {
-            results.innerHTML = '<div class="ux-command-empty">Ничего не найдено. Попробуй короче сформулировать запрос.</div>';
-            return;
-        }
-        results.innerHTML = paletteEntries.slice(0, 18).map((entry, index) => `
-            <button type="button" class="ux-command-item ${index === 0 ? 'active' : ''}" data-index="${index}">
-                <span class="ux-command-item-icon">${entry.icon}</span>
-                <span class="ux-command-item-copy"><span class="ux-command-item-title">${entry.title}</span><span class="ux-command-item-meta">${entry.meta}</span></span>
-            </button>`).join('');
-    }
-
-    function updateCommandActive() {
-        document.querySelectorAll('.ux-command-item').forEach((item, index) => {
-            const active = index === paletteActiveIndex;
-            item.classList.toggle('active', active);
-            if (active) item.scrollIntoView({ block: 'nearest' });
-        });
-    }
-
-    function activateCommand(index) {
-        const entry = paletteEntries[index];
-        if (!entry) return;
-        closeCommandPalette();
-        window.setTimeout(() => entry.run(), 20);
-    }
-
-    function openCommandPalette() {
-        ensureCommandPalette();
-        const backdrop = document.getElementById('ux-command-backdrop');
-        const input = document.getElementById('ux-command-input');
-        if (!backdrop || !input) return;
-        backdrop.classList.add('open');
-        backdrop.setAttribute('aria-hidden', 'false');
+    input.addEventListener('input', apply);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
         input.value = '';
-        renderCommandResults('');
-        requestAnimationFrame(() => input.focus());
+        apply();
+        input.blur();
+      }
+    });
+    clear.addEventListener('click', (event) => {
+      event.preventDefault();
+      input.value = '';
+      apply();
+      input.focus();
+    });
+  }
+
+  function openExamPractice() {
+    document.querySelector('.tab-btn[data-tab="exam-tasks"]')?.click();
+    if (typeof window.closeMobileSidebarAfterNavigation === 'function') window.closeMobileSidebarAfterNavigation();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  window.uxOpenExamPractice = openExamPractice;
+
+  function simplifySidebar() {
+    document.querySelectorAll('#sidebar-tickets .sidebar-module-title').forEach((title) => {
+      title.textContent = title.textContent.replace(/^\s*Модуль\s+\d+[.:]?\s*/i, '').trim();
+    });
+    document.querySelectorAll('#sidebar .sidebar-module-meta, #sidebar .sidebar-lesson-step').forEach((el) => el.remove());
+
+    const practice = document.getElementById('sidebar-practice');
+    if (practice) {
+      practice.innerHTML = '';
+      const item = document.createElement('div');
+      item.className = 'sidebar-item ux-practice-shortcut';
+      item.tabIndex = 0;
+      item.innerHTML = '<span class="ux-nav-icon">✎</span><span>Практика АГиТДУ · 2 семестр · экзамен</span>';
+      item.addEventListener('click', openExamPractice);
+      item.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openExamPractice(); }
+      });
+      practice.appendChild(item);
     }
 
-    function closeCommandPalette() {
-        const backdrop = document.getElementById('ux-command-backdrop');
-        if (!backdrop) return;
-        backdrop.classList.remove('open');
-        backdrop.setAttribute('aria-hidden', 'true');
+    const archiveTitle = Array.from(document.querySelectorAll('.sidebar-archive-section .sidebar-section-title'))
+      .find((node) => normalize(node.textContent) === 'архив');
+    const archive = archiveTitle?.closest('.sidebar-archive-section');
+    if (archive) {
+      const control = Array.from(archive.querySelectorAll('.sidebar-item')).find((item) => /контрольн/i.test(item.textContent));
+      if (control) control.innerHTML = '<span class="ux-nav-icon">✍</span><span>Контрольная АГиТДУ · 2 семестр</span>';
+      if (!archive.querySelector('.ux-archive-practice')) {
+        const item = document.createElement('div');
+        item.className = 'sidebar-item ux-archive-practice';
+        item.tabIndex = 0;
+        item.innerHTML = '<span class="ux-nav-icon">✎</span><span>Практика АГиТДУ · 2 семестр</span>';
+        item.addEventListener('click', openExamPractice);
+        archive.appendChild(item);
+      }
     }
+  }
 
-    function focusSidebarSearch() {
-        const input = document.getElementById(SEARCH_ID);
-        if (!input) return;
-        const sidebar = document.getElementById('sidebar');
-        if (window.matchMedia('(max-width: 1080px)').matches && sidebar && !sidebar.classList.contains('mobile-open')) {
-            if (typeof window.toggleMobileSidebar === 'function') window.toggleMobileSidebar();
-        }
-        requestAnimationFrame(() => input.focus());
+  function switchSemester1() {
+    if (typeof window.switchToSemester1Subtab === 'function') window.switchToSemester1Subtab('agidu');
+    else {
+      document.querySelectorAll('.tab-pane').forEach((pane) => pane.classList.remove('active-pane'));
+      document.getElementById('semester1-pane')?.classList.add('active-pane');
     }
+    document.querySelectorAll('.tabs .tab-btn').forEach((btn) => btn.classList.remove('active'));
+    document.querySelector('.tabs [data-ux-tab="semester1"]')?.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-    function setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (event) => {
-            const typing = isTypingTarget(event.target);
-            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-                event.preventDefault();
-                openCommandPalette();
-                return;
-            }
-            if (event.key === '/' && !typing && !event.ctrlKey && !event.metaKey && !event.altKey) {
-                event.preventDefault();
-                focusSidebarSearch();
-                return;
-            }
-            if (event.key === 'Escape' && document.body.classList.contains('ux-reader-mode')) {
-                setReaderMode(false);
-            }
+  function ensureTopTabs() {
+    const tabs = document.querySelector('.tabs');
+    if (!tabs) return;
+    const exam = tabs.querySelector('.tab-btn[data-tab="exam"]');
+    const tasks = tabs.querySelector('.tab-btn[data-tab="exam-tasks"]');
+    const physics = tabs.querySelector('.tab-btn[data-tab="physics-ntk"]');
+    if (exam) exam.textContent = '2 семестр · билеты';
+    if (tasks) tasks.textContent = 'Задачи';
+    if (physics) physics.textContent = 'Физика';
+
+    let sem1 = tabs.querySelector('[data-ux-tab="semester1"]');
+    if (!sem1) {
+      sem1 = document.createElement('div');
+      sem1.className = 'tab-btn';
+      sem1.dataset.uxTab = 'semester1';
+      sem1.tabIndex = 0;
+      sem1.textContent = '1 семестр';
+      sem1.addEventListener('click', switchSemester1);
+      sem1.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); switchSemester1(); }
+      });
+    }
+    // Chronological order: semester 1 -> semester 2 -> tasks -> physics.
+    tabs.prepend(sem1);
+    [exam, tasks, physics].filter(Boolean).forEach((node) => tabs.appendChild(node));
+
+    if (document.getElementById('semester1-pane')?.classList.contains('active-pane')) {
+      tabs.querySelectorAll('.tab-btn').forEach((btn) => btn.classList.remove('active'));
+      sem1.classList.add('active');
+    }
+  }
+
+  function ticketStep(ticket) {
+    const text = ticket.querySelector('.ticket-meta')?.textContent || '';
+    const m = text.match(/шаг\s*:?\s*(\d+)\s*\/\s*(\d+)/i);
+    return { step: Number(m?.[1] || 0), total: Number(m?.[2] || 5) };
+  }
+
+  function ticketState(ticket) {
+    const { step, total } = ticketStep(ticket);
+    if (step >= total) return 'mastered';
+    if (step === 0) return 'new';
+    if (ticket.classList.contains('ready')) return 'due';
+    return 'learning';
+  }
+
+  function applyFilter(container, filter, persist = true) {
+    let shown = 0;
+    const tickets = Array.from(container.querySelectorAll('.ticket'));
+    tickets.forEach((ticket) => {
+      const state = ticketState(ticket);
+      const visible = filter === 'all'
+        || (filter === 'due' && state === 'due')
+        || (filter === 'learning' && ['learning', 'due'].includes(state))
+        || (filter === 'mastered' && state === 'mastered')
+        || (filter === 'new' && state === 'new');
+      ticket.classList.toggle('ux-filter-hidden', !visible);
+      if (visible) shown += 1;
+    });
+    const bar = container.querySelector(':scope > .ux-ticket-filters');
+    bar?.querySelectorAll('button[data-filter]').forEach((btn) => btn.classList.toggle('active', btn.dataset.filter === filter));
+    const count = bar?.querySelector('.ux-filter-count');
+    if (count) count.textContent = filter === 'all' ? `${tickets.length}` : `${shown}/${tickets.length}`;
+    container.dataset.uxFilter = filter;
+    if (persist && container.id) localStorage.setItem(`${FILTER_KEY_PREFIX}${container.id}`, filter);
+  }
+
+  function ensureFilters(container) {
+    if (!container || !container.querySelector('.ticket') || container.querySelector(':scope > .ux-ticket-filters')) return;
+    const bar = document.createElement('div');
+    bar.className = 'ux-ticket-filters';
+    bar.innerHTML = `
+      <div class="ux-filter-group" role="group" aria-label="Фильтр билетов">
+        <button type="button" data-filter="all">Все</button>
+        <button type="button" data-filter="due">К повторению</button>
+        <button type="button" data-filter="learning">В процессе</button>
+        <button type="button" data-filter="mastered">Освоено</button>
+        <button type="button" data-filter="new">Новые</button>
+      </div>
+      <span class="ux-filter-count"></span>`;
+    container.prepend(bar);
+    bar.addEventListener('click', (event) => {
+      const btn = event.target.closest('button[data-filter]');
+      if (btn) applyFilter(container, btn.dataset.filter);
+    });
+    applyFilter(container, localStorage.getItem(`${FILTER_KEY_PREFIX}${container.id}`) || 'all', false);
+  }
+
+  function metrics(container) {
+    const out = { total: 0, mastered: 0, learning: 0, due: 0 };
+    container?.querySelectorAll('.ticket').forEach((ticket) => {
+      out.total += 1;
+      const state = ticketState(ticket);
+      if (state === 'mastered') out.mastered += 1;
+      if (state === 'learning' || state === 'due') out.learning += 1;
+      if (state === 'due') out.due += 1;
+    });
+    return out;
+  }
+
+  function ensurePageHeader(pane, list, config) {
+    if (!pane || !list?.querySelector('.ticket')) return;
+    let head = pane.querySelector(':scope > .ux-page-head');
+    if (!head) {
+      head = document.createElement('section');
+      head.className = 'ux-page-head';
+      head.innerHTML = `
+        <div class="ux-page-head-main">
+          <div class="ux-page-eyebrow">${config.eyebrow}</div>
+          <h1>${config.title}</h1>
+          <p>${config.subtitle}</p>
+          ${config.source ? `<a class="ux-source-link" href="${config.source}" target="_blank" rel="noopener">Полный конспект ↗</a>` : ''}
+        </div>
+        <div class="ux-page-progress" aria-label="Прогресс">
+          <div><strong data-metric="mastered">0</strong><span>освоено</span></div>
+          <div><strong data-metric="learning">0</strong><span>в работе</span></div>
+          <div><strong data-metric="due">0</strong><span>повторить</span></div>
+          <div><strong data-metric="total">0</strong><span>всего</span></div>
+        </div>`;
+      pane.prepend(head);
+      const toolbar = pane.querySelector(':scope > .toolbar');
+      if (toolbar) head.insertAdjacentElement('afterend', toolbar);
+    }
+    const m = metrics(list);
+    Object.entries(m).forEach(([key, value]) => {
+      const node = head.querySelector(`[data-metric="${key}"]`);
+      if (node) node.textContent = String(value);
+    });
+  }
+
+  function organizeExamStatus() {
+    const pane = document.getElementById('exam-pane');
+    if (!pane) return;
+    pane.querySelectorAll(':scope > .ux-study-dashboard').forEach((el) => el.remove());
+    pane.querySelector(':scope > .stats')?.classList.add('ux-base-stats-hidden');
+    pane.querySelector(':scope > .stats-grid')?.classList.add('ux-base-stats-hidden');
+    const rank = document.getElementById('rank-card');
+    const timer = document.getElementById('timer');
+    const pace = document.getElementById('pace-info');
+    if (rank && !rank.closest('.ux-status-row')) {
+      const row = document.createElement('div');
+      row.className = 'ux-status-row';
+      rank.insertAdjacentElement('beforebegin', row);
+      [rank, timer, pace].filter(Boolean).forEach((node) => row.appendChild(node));
+    }
+    if (timer && /экзамен!?/i.test(timer.textContent || '') && !/до экзамена/i.test(timer.textContent || '')) timer.hidden = true;
+    if (pace && timer?.hidden) pace.hidden = true;
+  }
+
+  function ensureSemester1Figures() {
+    const list = document.getElementById('semester1-agidu-list');
+    if (!list) return;
+    list.querySelectorAll('.ticket').forEach((ticket) => {
+      const idx = Number(ticket.dataset.idx);
+      const defs = FIGURES[idx];
+      const content = ticket.querySelector('.conspect-content');
+      if (!defs?.length || !content || content.querySelector('.ux-notes-figures')) return;
+
+      const gallery = document.createElement('section');
+      gallery.className = 'ux-notes-figures';
+      gallery.innerHTML = '<div class="ux-figures-title"><strong>Иллюстрации</strong><a href="' + NOTES_PAGE + '" target="_blank" rel="noopener">Источник ↗</a></div><div class="ux-figures-grid"></div>';
+      const grid = gallery.querySelector('.ux-figures-grid');
+      let success = 0;
+      let done = 0;
+      defs.forEach(([file, alt]) => {
+        const figure = document.createElement('figure');
+        figure.innerHTML = `<img loading="lazy" decoding="async" src="${NOTES_PAGES_BASE}${file}" alt="${alt}"><figcaption>${alt}</figcaption>`;
+        const img = figure.querySelector('img');
+        let triedRaw = false;
+        img.addEventListener('load', () => { success += 1; done += 1; finish(); }, { once: true });
+        img.addEventListener('error', () => {
+          if (!triedRaw) {
+            triedRaw = true;
+            img.src = NOTES_RAW_BASE + file;
+            return;
+          }
+          done += 1;
+          figure.remove();
+          finish();
         });
+        grid.appendChild(figure);
+      });
+      function finish() {
+        if (done < defs.length) return;
+        if (!success) gallery.remove();
+      }
+      const h = content.querySelector('h3');
+      if (h) h.insertAdjacentElement('afterend', gallery);
+      else content.prepend(gallery);
+    });
+  }
 
-        document.addEventListener('keydown', (event) => {
-            const target = event.target;
-            if ((event.key === 'Enter' || event.key === ' ') && target instanceof HTMLElement && target.matches('.tab-btn, .sub-tab-btn, .sidebar-item, .sidebar-lesson, .sidebar-module-header')) {
-                event.preventDefault();
-                target.click();
-            }
-        });
-    }
+  function polishLabels() {
+    const subtitle = document.querySelector('.hero-subtitle');
+    if (subtitle) subtitle.textContent = 'Подготовка к экзаменам без лишнего шума';
+    const pin = document.querySelector('.sidebar-pin-label');
+    if (pin) pin.textContent = 'Навигация';
+    const progress = document.querySelector('.sidebar-progress-label');
+    if (progress) progress.textContent = 'Прогресс';
+    const sem1tab = document.querySelector('#semester1-pane .sub-tab-btn[data-subtab="agidu"]');
+    if (sem1tab) sem1tab.textContent = 'Алгебра, геометрия и ТДУ';
+    const disclaimer = document.querySelector('.disclaimer');
+    if (disclaimer) disclaimer.innerHTML = '<strong>Важно:</strong> перед экзаменом перепроверяй формулы и ответы по первоисточнику.';
+  }
 
-    function openCheatsheet() {
-        return Array.from(document.querySelectorAll('.cheatsheet')).find((sheet) => {
-            const style = getComputedStyle(sheet);
-            return style.display !== 'none' && style.visibility !== 'hidden' && sheet.offsetParent !== null;
-        });
-    }
+  function focusSearch() {
+    const input = document.getElementById(SEARCH_ID);
+    if (!input) return;
+    if (matchMedia('(max-width: 980px)').matches && !document.getElementById('sidebar')?.classList.contains('mobile-open')) window.toggleMobileSidebar?.();
+    requestAnimationFrame(() => input.focus());
+  }
 
-    function ensureReaderButton() {
-        if (document.querySelector('.ux-reader-btn')) return;
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'ux-reader-btn';
-        button.innerHTML = '<span>◫</span><span class="ux-reader-label">Режим чтения</span>';
-        button.addEventListener('click', () => setReaderMode(!document.body.classList.contains('ux-reader-mode')));
-        document.body.appendChild(button);
-    }
+  function bindKeyboard() {
+    document.addEventListener('keydown', (event) => {
+      if (event.key === '/' && !isTypingTarget(event.target) && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        focusSearch();
+      }
+    });
+  }
 
-    function setReaderMode(enabled) {
-        document.querySelectorAll('.ticket.ux-reader-target').forEach((ticket) => ticket.classList.remove('ux-reader-target'));
-        if (enabled) {
-            const sheet = openCheatsheet();
-            const ticket = sheet?.closest('.ticket');
-            if (!ticket) enabled = false;
-            else ticket.classList.add('ux-reader-target');
-        }
-        document.body.classList.toggle('ux-reader-mode', enabled);
-        const button = document.querySelector('.ux-reader-btn');
-        const label = button?.querySelector('.ux-reader-label');
-        if (label) label.textContent = enabled ? 'Вернуться' : 'Режим чтения';
-        if (enabled) window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+  function decorate() {
+    repairMojibake();
+    removeChangelogNoise();
+    polishLabels();
+    ensureTopTabs();
+    ensureSidebarTools();
+    simplifySidebar();
+    organizeExamStatus();
 
-    function refreshReaderButton() {
-        ensureReaderButton();
-        const button = document.querySelector('.ux-reader-btn');
-        const opened = openCheatsheet();
-        if (!button) return;
-        button.classList.toggle('visible', Boolean(opened) || document.body.classList.contains('ux-reader-mode'));
-        if (!opened && document.body.classList.contains('ux-reader-mode')) setReaderMode(false);
-    }
+    const examList = document.getElementById('list');
+    const sem1List = document.getElementById('semester1-agidu-list');
+    ensureFilters(examList);
+    ensureFilters(sem1List);
+    if (examList) applyFilter(examList, examList.dataset.uxFilter || 'all', false);
+    if (sem1List) applyFilter(sem1List, sem1List.dataset.uxFilter || 'all', false);
 
-    function setupScrollTop() {
-        if (document.getElementById('ux-scroll-top')) return;
-        const button = document.createElement('button');
-        button.id = 'ux-scroll-top';
-        button.type = 'button';
-        button.title = 'Наверх';
-        button.setAttribute('aria-label', 'Вернуться наверх');
-        button.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>';
-        document.body.appendChild(button);
-        const update = () => button.classList.toggle('visible', window.scrollY > 520);
-        window.addEventListener('scroll', update, { passive: true });
-        update();
-        button.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-    }
+    ensurePageHeader(document.getElementById('exam-pane'), examList, {
+      eyebrow: 'Алгебра, геометрия и ТДУ · 2 семестр',
+      title: 'Экзаменационные билеты',
+      subtitle: 'Теория, интервальные повторения и быстрый доступ к практике.',
+      source: null
+    });
+    const sem1Mount = document.getElementById('semester1-agidu');
+    ensurePageHeader(sem1Mount, sem1List, {
+      eyebrow: 'Алгебра, геометрия и ТДУ · 1 семестр',
+      title: 'Экзаменационные билеты',
+      subtitle: '24 билета с конспектами и иллюстрациями из полного материала.',
+      source: NOTES_PAGE
+    });
+    ensureSemester1Figures();
+  }
 
-    function ensureMobileNav() {
-        if (document.querySelector('.ux-mobile-nav')) return;
-        const nav = document.createElement('nav');
-        nav.className = 'ux-mobile-nav';
-        nav.setAttribute('aria-label', 'Быстрая навигация');
-        nav.innerHTML = `
-            <button type="button" data-go="exam"><span>②</span>2 сем</button>
-            <button type="button" data-go="semester1"><span>①</span>1 сем</button>
-            <button type="button" data-go="tasks"><span>✎</span>Задачи</button>
-            <button type="button" data-go="physics"><span>φ</span>Физика</button>
-            <button type="button" data-go="menu"><span>☰</span>Меню</button>`;
-        nav.addEventListener('click', (event) => {
-            const button = event.target.closest('button[data-go]');
-            if (!button) return;
-            const go = button.dataset.go;
-            if (go === 'exam') document.querySelector('.tab-btn[data-tab="exam"]')?.click();
-            else if (go === 'tasks') document.querySelector('.tab-btn[data-tab="exam-tasks"]')?.click();
-            else if (go === 'physics') document.querySelector('.tab-btn[data-tab="physics-ntk"]')?.click();
-            else if (go === 'semester1') {
-                if (typeof window.switchToSemester1Subtab === 'function') window.switchToSemester1Subtab('agidu');
-                else document.querySelector('[data-semester1-subtab="agidu"]')?.click();
-            } else if (go === 'menu' && typeof window.toggleMobileSidebar === 'function') window.toggleMobileSidebar();
-            window.setTimeout(refreshMobileNav, 60);
-        });
-        document.body.appendChild(nav);
-        refreshMobileNav();
-    }
-
-    function refreshMobileNav() {
-        const nav = document.querySelector('.ux-mobile-nav');
-        if (!nav) return;
-        const activePane = document.querySelector('.tab-pane.active-pane')?.id || '';
-        nav.querySelectorAll('button[data-go]').forEach((button) => button.classList.remove('active'));
-        let key = '';
-        if (activePane === 'exam-pane') key = 'exam';
-        else if (activePane === 'exam-tasks-pane') key = 'tasks';
-        else if (activePane === 'physics-ntk-pane') key = 'physics';
-        else if (activePane === 'semester1-pane') key = 'semester1';
-        nav.querySelector(`[data-go="${key}"]`)?.classList.add('active');
-    }
-
-    function ensureTopLevelTabs() {
-        const tabs = document.querySelector('.tabs');
-        if (!tabs) return;
-        const exam = tabs.querySelector('.tab-btn[data-tab="exam"]');
-        const tasks = tabs.querySelector('.tab-btn[data-tab="exam-tasks"]');
-        const physics = tabs.querySelector('.tab-btn[data-tab="physics-ntk"]');
-        if (exam && exam.textContent.trim() !== 'Билеты · 2 сем') exam.textContent = 'Билеты · 2 сем';
-        if (tasks && tasks.textContent.trim() !== 'Задачи') tasks.textContent = 'Задачи';
-        if (physics && physics.textContent.trim() !== 'Физика') physics.textContent = 'Физика';
-
-        let semester = tabs.querySelector('[data-ux-tab="semester1"]');
-        if (!semester) {
-            semester = document.createElement('div');
-            semester.className = 'tab-btn ux-semester1-tab';
-            semester.dataset.uxTab = 'semester1';
-            semester.textContent = '1 семестр';
-            semester.setAttribute('role', 'tab');
-            semester.setAttribute('tabindex', '0');
-            if (exam?.nextSibling) tabs.insertBefore(semester, exam.nextSibling);
-            else tabs.appendChild(semester);
-            semester.addEventListener('click', () => {
-                if (typeof window.switchToSemester1Subtab === 'function') window.switchToSemester1Subtab('agidu');
-                else {
-                    document.querySelectorAll('.tab-pane').forEach((pane) => pane.classList.remove('active-pane'));
-                    document.getElementById('semester1-pane')?.classList.add('active-pane');
-                }
-                document.querySelectorAll('.tab-btn').forEach((btn) => btn.classList.remove('active'));
-                semester.classList.add('active');
-                refreshMobileNav();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            });
-        }
-        const semPaneActive = document.getElementById('semester1-pane')?.classList.contains('active-pane');
-        if (semPaneActive) {
-            document.querySelectorAll('.tab-btn').forEach((btn) => btn.classList.remove('active'));
-            semester.classList.add('active');
-        }
-    }
-
-    function polishStaticLabels() {
-        const subtitle = document.querySelector('.hero-subtitle');
-        if (subtitle && subtitle.textContent.trim() !== 'Билеты, повторения, задачи и физика — всё в одном месте') subtitle.textContent = 'Билеты, повторения, задачи и физика — всё в одном месте';
-        document.querySelectorAll('.sidebar-item').forEach((item) => {
-            if (/АГиТДУ\s*[—-]\s*экз\s*1\s*сем/i.test(item.textContent)) item.textContent = '📐 Алгебра, геометрия и ТДУ · 1 сем';
-        });
-        const semTab = document.querySelector('#semester1-pane .sub-tab-btn[data-subtab="agidu"]');
-        if (semTab && semTab.textContent.trim() !== '📐 Алгебра, геометрия и ТДУ') semTab.textContent = '📐 Алгебра, геометрия и ТДУ';
-        const disclaimer = document.querySelector('.disclaimer');
-        if (disclaimer && !disclaimer.dataset.uxDone) {
-            disclaimer.dataset.uxDone = '1';
-            disclaimer.innerHTML = '<strong>Проверяй формулы перед экзаменом.</strong> Конспекты помогают готовиться, но в материалах могут встречаться опечатки.';
-        }
-    }
-
-    function organizeExamStatus() {
-        const pane = document.getElementById('exam-pane');
-        if (!pane) return;
-        let strip = pane.querySelector(':scope > .ux-exam-status-strip');
-        if (!strip) {
-            const rank = document.getElementById('rank-card');
-            const timer = document.getElementById('timer');
-            const pace = document.getElementById('pace-info');
-            if (!rank && !timer && !pace) return;
-            strip = document.createElement('div');
-            strip.className = 'ux-exam-status-strip';
-            const anchor = rank || timer || pace;
-            anchor.insertAdjacentElement('beforebegin', strip);
-            [rank, timer, pace].filter(Boolean).forEach((node) => strip.appendChild(node));
-        }
-        const timer = document.getElementById('timer');
-        const stale = /экзамен!?/i.test(timer?.textContent || '') && !/до экзамена/i.test(timer?.textContent || '');
-        strip.classList.toggle('is-stale', stale);
-    }
-
-    function decorateResourceBanners() {
-        const examBanner = document.querySelector('#list .resource-banner');
-        if (examBanner && !examBanner.dataset.uxDone) {
-            examBanner.dataset.uxDone = '1';
-            const text = examBanner.querySelector('.resource-banner-text');
-            if (text && /АГиТДУ/i.test(text.textContent)) text.textContent = 'Алгебра, геометрия и ТДУ · теория 2 семестра';
-        }
-    }
-
-    function decorate() {
-        ensureTopLevelTabs();
-        polishStaticLabels();
-        ensureSidebarTools();
-        simplifySidebar();
-        ensureSidebarFooter();
-        enhanceAccessibility();
-        ensureMobileNav();
-        ensureCommandPalette();
-        organizeExamStatus();
-        decorateResourceBanners();
-
-        const examList = document.getElementById('list');
-        const sem1List = document.getElementById('semester1-agidu-list');
-        if (examList?.querySelector('.ticket')) {
-            ensureTicketTools(examList);
-            enhanceTicketStates(examList);
-            const filter = examList.dataset.uxFilter || 'all';
-            applyTicketFilter(examList, filter, false);
-        }
-        if (sem1List?.querySelector('.ticket')) {
-            ensureTicketTools(sem1List);
-            enhanceTicketStates(sem1List);
-            const filter = sem1List.dataset.uxFilter || 'all';
-            applyTicketFilter(sem1List, filter, false);
-        }
-
-        ensureStudyDashboard(document.getElementById('exam-pane'));
-        ensureStudyDashboard(document.getElementById('semester1-pane'));
-        document.querySelectorAll('.ux-study-dashboard').forEach((dashboard) => {
-            const pane = dashboard.closest('.tab-pane');
-            refreshDashboard(dashboard, subjectDashboardConfig(pane).list);
-        });
-
-        ensureSemester1Figures();
-        ensureFigureSourceLinks();
-        refreshReaderButton();
-        refreshMobileNav();
-    }
-
-    function watchDynamicContent() {
-        const root = document.querySelector('.main-content') || document.body;
-        if (typeof MutationObserver === 'undefined' || !root) return;
-        let scheduled = false;
-        const observer = new MutationObserver(() => {
-            if (scheduled) return;
-            scheduled = true;
-            requestAnimationFrame(() => {
-                scheduled = false;
-                decorate();
-            });
-        });
-        observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
-    }
-
-    function watchDynamicSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        if (!sidebar || typeof MutationObserver === 'undefined') return;
-        let scheduled = false;
-        const observer = new MutationObserver(() => {
-            if (scheduled) return;
-            scheduled = true;
-            requestAnimationFrame(() => {
-                scheduled = false;
-                const input = document.getElementById(SEARCH_ID);
-                if (input?.value) {
-                    if (typeof window.applySidebarSearch === 'function') window.applySidebarSearch();
-                    else fallbackSidebarSearch(input.value);
-                }
-                simplifySidebar();
-                enhanceAccessibility();
-            });
-        });
-        observer.observe(sidebar, { childList: true, subtree: true });
-    }
-
-    function init() {
-        document.documentElement.classList.remove('ux-v2');
-        document.documentElement.classList.add('ux-v3');
-        setupKeyboardShortcuts();
-        setupScrollTop();
-        ensureReaderButton();
+  function observe() {
+    const root = document.querySelector('.main-content') || document.body;
+    if (!root || typeof MutationObserver === 'undefined') return;
+    let pending = false;
+    const observer = new MutationObserver(() => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(() => {
+        pending = false;
         decorate();
-        watchDynamicSidebar();
-        watchDynamicContent();
-        window.setTimeout(decorate, 250);
-        window.setTimeout(decorate, 900);
-    }
+      });
+    });
+    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  }
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
-    else init();
+  function init() {
+    document.documentElement.classList.remove('ux-v2', 'ux-v3');
+    document.documentElement.classList.add('ux-v4');
+    bindKeyboard();
+    decorate();
+    observe();
+    setTimeout(decorate, 250);
+    setTimeout(decorate, 1000);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+  else init();
 })();
