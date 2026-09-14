@@ -45,7 +45,9 @@ jobs:
           test -f _site/index.html
           test -f _site/sw.js
           test -f _site/assets/css/style.css
+          test -f _site/assets/css/ux-overrides.css
           test -f _site/src/app/app.js
+          test -f _site/src/app/ux-enhancements.js
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4

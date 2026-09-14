@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<meta name="theme-color" content="#111a2d">
-    <meta name="description" content="Ð‘Ð¸Ð»ÐµÑ‚Ñ‹, Ð¸Ð½Ñ‚ÐµÑ€Ð²Ð°Ð»ÑŒÐ½Ñ‹Ðµ Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€ÐµÐ½Ð¸Ñ, Ð·Ð°Ð´Ð°Ñ‡Ð¸ Ð¸ ÐºÐ¾Ð½ÑÐ¿ÐµÐºÑ‚Ñ‹ Ð´Ð»Ñ Ð¿Ð¾Ð´Ð³Ð¾Ñ‚Ð¾Ð²ÐºÐ¸ Ðº ÑÐºÐ·Ð°Ð¼ÐµÐ½Ð°Ð¼ Ð£Ñ€Ð¤Ð£">
-    <title>ÑƒÑ€Ñ„ÑƒÐ¿Ð¾Ð±ÐµÐ´Ð°.Ñ€Ñ„ â€” Ð¿Ð¾Ð´Ð³Ð¾Ñ‚Ð¾Ð²ÐºÐ° Ðº ÑÐºÐ·Ð°Ð¼ÐµÐ½Ð°Ð¼</title>
+<meta name="theme-color" content="#ffffff">
+    <meta name="description" content="Билеты, интервальные повторения, задачи и конспекты для подготовки к экзаменам УрФУ">
+    <title>урфупобеда.рф — подготовка к экзаменам</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://www.gstatic.com">
     <link rel="preconnect" href="https://firebasestorage.googleapis.com">
     <link rel="stylesheet" href="assets/css/style.css?v=26">
-    <link rel="stylesheet" href="assets/css/ux-overrides.css?v=5">
+    <link rel="stylesheet" href="assets/css/ux-overrides.css?v=7">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
@@ -35,66 +35,66 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script>try{if('serviceWorker'in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('./sw.js?v=5').catch(()=>{})}}catch(e){}</script>
+    <script>try{if('serviceWorker'in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('./sw.js?v=7').catch(()=>{})}}catch(e){}</script>
 </head>
 <body>
 <div class="container">
     <div class="header-buttons">
-        <div class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="ÐŸÐµÑ€ÐµÐºÐ»ÑŽÑ‡Ð¸Ñ‚ÑŒ Ñ‚ÐµÐ¼Ñƒ"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></div>
+        <div class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Переключить тему"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></div>
     </div>
     <div class="hero">
         <div class="hero-row">
-            <img src="assets/img/logo.svg" alt="ÑƒÑ€Ñ„ÑƒÐ¿Ð¾Ð±ÐµÐ´Ð°.Ñ€Ñ„" class="hero-logo" draggable="false">
-            <img src="assets/img/agitdu/no_phone2.png" alt="ÐÐµ Ð½Ð° Ñ‚ÐµÐ»ÐµÑ„Ð¾Ð½Ðµ!" class="hero-warn" draggable="false">
+            <img src="assets/img/logo.svg" alt="урфупобеда.рф" class="hero-logo" draggable="false">
+            <img src="assets/img/agitdu/no_phone2.png" alt="Не на телефоне!" class="hero-warn" draggable="false">
         </div>
-        <div class="hero-subtitle">Ð‘Ð¸Ð»ÐµÑ‚Ñ‹, Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€ÐµÐ½Ð¸Ñ, Ð·Ð°Ð´Ð°Ñ‡Ð¸ Ð¸ Ñ„Ð¸Ð·Ð¸ÐºÐ° â€” Ð²ÑÑ‘ Ð² Ð¾Ð´Ð½Ð¾Ð¼ Ð¼ÐµÑÑ‚Ðµ</div>
+        <div class="hero-subtitle">Подготовка к экзаменам</div>
     </div>
 
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-trigger" id="sidebar-trigger" onclick="toggleSidebar()">
-        <span class="sidebar-trigger-text">Ð¼ÐµÐ½ÑŽ</span>
+        <span class="sidebar-trigger-text">меню</span>
         <span class="sidebar-trigger-arrow">&gt;</span>
     </div>
     <div class="sidebar-content">
         <div class="sidebar-content-inner">
             <div class="sidebar-pin-row">
-                <span class="sidebar-pin-label">ÐÐ°Ð²Ð¸Ð³Ð°Ñ†Ð¸Ñ</span>
-                <button class="sidebar-pin-btn" id="sidebar-pin" onclick="toggleSidebarPin()" title="Ð—Ð°ÐºÑ€ÐµÐ¿Ð¸Ñ‚ÑŒ">ðŸ“Œ</button>
+                <span class="sidebar-pin-label">Навигация</span>
+                <button class="sidebar-pin-btn" id="sidebar-pin" onclick="toggleSidebarPin()" title="Закрепить">📌</button>
             </div>
             <div class="sidebar-progress" id="sidebar-progress">
-                <div class="sidebar-progress-label">ÐŸÑ€Ð¾Ð³Ñ€ÐµÑÑ</div>
+                <div class="sidebar-progress-label">Прогресс</div>
                 <div class="sidebar-progress-bar">
                     <div class="sidebar-progress-fill" id="sidebar-progress-fill"></div>
                 </div>
                 <div class="sidebar-progress-text" id="sidebar-progress-text">0%</div>
             </div>
             <div class="sidebar-archive-section" style="margin-top: 12px;">
-                <div class="sidebar-section-title" style="color: var(--ink-blue); font-size: 1rem;">Ð‘Ð¸Ð»ÐµÑ‚Ñ‹ Â· 2 ÑÐµÐ¼</div>
+                <div class="sidebar-section-title" style="color: var(--ink-blue); font-size: 1rem;">Билеты · 2 сем</div>
             </div>
             <div style="padding-left: 12px;">
-                <div class="sidebar-section-title" style="font-size: 0.85rem;">Ð¢ÐµÐ¾Ñ€Ð¸Ñ</div>
+                <div class="sidebar-section-title" style="font-size: 0.85rem;">Теория</div>
             </div>
             <div class="sidebar-ticket-list" id="sidebar-tickets"></div>
             <div style="padding-left: 12px;">
-                <div class="sidebar-section-title" style="font-size: 0.85rem;">ÐŸÑ€Ð°ÐºÑ‚Ð¸ÐºÐ°</div>
+                <div class="sidebar-section-title" style="font-size: 0.85rem;">Практика</div>
             </div>
             <div class="sidebar-practice-list" id="sidebar-practice"></div>
             <div class="sidebar-archive-section">
-                <div class="sidebar-section-title">ÐÑ€Ñ…Ð¸Ð²</div>
-                <div class="sidebar-item" onclick="switchToArchiveSubtab('control')">âœï¸ ÐšÐ¾Ð½Ñ‚Ñ€Ð¾Ð»ÑŒÐ½Ð°Ñ Ñ€Ð°Ð±Ð¾Ñ‚Ð° Ð¿Ð¾ ÐÐ“Ð¸Ð¢Ð”Ð£ Ð·Ð° Ð²Ñ‚Ð¾Ñ€Ð¾Ð¹ ÑÐµÐ¼ÐµÑÑ‚Ñ€</div>
+                <div class="sidebar-section-title">Архив</div>
+                <div class="sidebar-item" onclick="switchToArchiveSubtab('control')">Контрольная АГиТДУ · 2 семестр</div>
             </div>
             <div class="sidebar-archive-section">
-                <div class="sidebar-section-title">1 ÑÐµÐ¼ÐµÑÑ‚Ñ€</div>
-                <div class="sidebar-item" onclick="switchToSemester1Subtab('agidu')">ðŸ“ ÐÐ»Ð³ÐµÐ±Ñ€Ð°, Ð³ÐµÐ¾Ð¼ÐµÑ‚Ñ€Ð¸Ñ Ð¸ Ð¢Ð”Ð£ Â· 1 ÑÐµÐ¼</div>
-                <div class="sidebar-item" onclick="switchToSemester1Subtab('math')">ðŸ“ ÐœÐ°Ñ‚ÐµÐ¼Ð°Ñ‚Ð¸ÐºÐ° â€” Ð˜Ð½Ñ‚ÐµÐ³Ñ€Ð°Ð»Ñ‹</div>
-                <div class="sidebar-item" onclick="switchToSemester1Subtab('discrete')">ðŸ’» Ð”Ð¸ÑÐºÑ€ÐµÑ‚Ð½Ð°Ñ Ð¼Ð°Ñ‚ÐµÐ¼Ð°Ñ‚Ð¸ÐºÐ°</div>
+                <div class="sidebar-section-title">1 семестр</div>
+                <div class="sidebar-item" onclick="switchToSemester1Subtab('agidu')">Алгебра, геометрия и ТДУ</div>
+                <div class="sidebar-item" onclick="switchToSemester1Subtab('math')">Математика · интегралы</div>
+                <div class="sidebar-item" onclick="switchToSemester1Subtab('discrete')">Дискретная математика</div>
             </div>
         </div>
     </div>
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 </aside>
 
-<button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="ÐœÐµÐ½ÑŽ">
+<button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="Меню">
     <span></span>
     <span></span>
     <span></span>
@@ -103,68 +103,68 @@
 <div class="main-layout">
     <div class="main-content">
             <div class="tabs">
-                <div class="tab-btn active" data-tab="exam">Ð‘Ð¸Ð»ÐµÑ‚Ñ‹ Â· 2 ÑÐµÐ¼</div>
-                <div class="tab-btn" data-tab="exam-tasks">Ð—Ð°Ð´Ð°Ñ‡Ð¸</div>
-                <div class="tab-btn" data-tab="physics-ntk">Ð¤Ð¸Ð·Ð¸ÐºÐ°</div>
+                <div class="tab-btn active" data-tab="exam">Экзамен</div>
+                <div class="tab-btn" data-tab="exam-tasks">Практика</div>
+                <div class="tab-btn" data-tab="physics-ntk">Физика</div>
             </div>
 
             <div id="exam-pane" class="tab-pane active-pane">
                 <div class="toolbar">
-                    <button class="btn-save" onclick="exportAllToFile()">Ð¡Ð¾Ñ…Ñ€Ð°Ð½Ð¸Ñ‚ÑŒ Ð¿Ñ€Ð¾Ð³Ñ€ÐµÑÑ</button>
-                    <button class="btn-load" onclick="importAllFromFile()">Ð—Ð°Ð³Ñ€ÑƒÐ·Ð¸Ñ‚ÑŒ Ð¿Ñ€Ð¾Ð³Ñ€ÐµÑÑ</button>
+                    <button class="btn-save" onclick="exportAllToFile()">Сохранить прогресс</button>
+                    <button class="btn-load" onclick="importAllFromFile()">Загрузить прогресс</button>
                 </div>
                 <div id="rank-card" class="rank-card">
-                    <div class="rank-icon" id="rank-icon">ðŸŽ–ï¸</div>
+                    <div class="rank-icon" id="rank-icon">🎖️</div>
                     <div class="rank-info">
-                        <div class="rank-title" id="rank-title">ÐœÐ¸Ð½Ð¸Ð¼Ð°Ð»</div>
-                        <div class="rank-sub" id="rank-sub">Ð¡Ð´ÐµÐ»Ð°Ð» Ð¼Ð¸Ð½Ð¸Ð¼ÑƒÐ¼ â€” Ð¾Ñ‚ÐºÑ€Ñ‹Ð» Ð±Ð¸Ð»ÐµÑ‚Ñ‹</div>
+                        <div class="rank-title" id="rank-title">Минимал</div>
+                        <div class="rank-sub" id="rank-sub">Сделал минимум — открыл билеты</div>
                         <div class="rank-progress">
                             <div class="progress-bar"><div class="progress-fill" id="rank-progress-fill"></div></div>
-                            <div class="rank-stats" id="rank-stats">0 / 85 Ð¾Ñ‡ÐºÐ¾Ð²</div>
+                            <div class="rank-stats" id="rank-stats">0 / 85 очков</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="glass-panel timer-card" id="timer">Ð—Ð°Ð³Ñ€ÑƒÐ·ÐºÐ°...</div>
-                <div class="glass-panel pace-card" id="pace-info">ÐÐ½Ð°Ð»Ð¸Ð·Ð¸Ñ€ÑƒÐµÐ¼ Ñ‚Ð²Ð¾ÑŽ ÑÐºÐ¾Ñ€Ð¾ÑÑ‚ÑŒ...</div>
+                <div class="glass-panel timer-card" id="timer">Загрузка...</div>
+                <div class="glass-panel pace-card" id="pace-info">Анализируем твою скорость...</div>
                 <div class="glass-panel stats">
                     <div><span id="today-date"></span></div>
-                    <div>ÐžÑÑ‚Ð°Ð»Ð¾ÑÑŒ Ð¾ÑÐ²Ð¾Ð¸Ñ‚ÑŒ: <span id="count-ready">0</span></div>
-                    <div>ÐžÑÐ²Ð¾ÐµÐ½Ð¾: <span id="mastery-percent">0</span>%</div>
+                    <div>Осталось освоить: <span id="count-ready">0</span></div>
+                    <div>Освоено: <span id="mastery-percent">0</span>%</div>
                 </div>
 
                 <div class="glass-panel stats-grid" style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
                     <div style="text-align: center; flex: 1;">
                         <div style="font-size: 1.8rem; font-weight: bold; color: #1a6e3a;" id="stat-mastered">0</div>
-                        <div style="font-size: 0.7rem; color: var(--pencil);">âœ… ÐžÑÐ²Ð¾ÐµÐ½Ð¾ (ÑˆÐ°Ð³ 5)</div>
+                        <div style="font-size: 0.7rem; color: var(--pencil);">✅ Освоено (шаг 5)</div>
                     </div>
                     <div style="text-align: center; flex: 1;">
                         <div style="font-size: 1.8rem; font-weight: bold; color: var(--ink-blue);" id="stat-learning">0</div>
-                        <div style="font-size: 0.7rem; color: var(--pencil);">ðŸ”„ Ð’ Ð¿Ñ€Ð¾Ñ†ÐµÑÑÐµ</div>
+                        <div style="font-size: 0.7rem; color: var(--pencil);">🔄 В процессе</div>
                     </div>
                     <div style="text-align: center; flex: 1;">
                         <div style="font-size: 1.8rem; font-weight: bold; color: var(--ink-red);" id="stat-notstarted">0</div>
-                        <div style="font-size: 0.7rem; color: var(--pencil);">â³ ÐÐµ Ð½Ð°Ñ‡Ð°Ñ‚Ð¾</div>
+                        <div style="font-size: 0.7rem; color: var(--pencil);">⏳ Не начато</div>
                     </div>
                     <div style="text-align: center; flex: 1;">
                         <div style="font-size: 1.8rem; font-weight: bold; color: var(--ink-blue);" id="stat-totalrepeats">0</div>
-                        <div style="font-size: 0.7rem; color: var(--pencil);">ðŸ“š Ð’ÑÐµÐ³Ð¾ Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€ÐµÐ½Ð¸Ð¹</div>
+                        <div style="font-size: 0.7rem; color: var(--pencil);">📚 Всего повторений</div>
                     </div>
                 </div>
                 <div class="glass-panel" style="margin: 1rem 0; padding: 0.6rem 1rem; text-align: center; font-weight: bold; font-size: 1.1rem; border-left: 4px solid var(--ink-blue);">
-                    ÐÐ“Ð¸Ð¢Ð”Ð£ â€” Ñ‚ÐµÐ¾Ñ€Ð¸Ñ (2 ÑÐµÐ¼ÐµÑÑ‚Ñ€)
+                    АГиТДУ — теория (2 семестр)
                 </div>
                 <div id="list" class="ticket-list"></div>
-                <div class="ornament">â—ˆ â—ˆ â—ˆ</div>
+                <div class="ornament">◈ ◈ ◈</div>
                 <div class="button-group">
-                    <button class="global-undo-btn" onclick="undoLastAction()">ÐžÑ‚Ð¼ÐµÐ½Ð¸Ñ‚ÑŒ Ð¿Ð¾ÑÐ»ÐµÐ´Ð½ÐµÐµ</button>
-                    <button class="reset-btn" onclick="resetAll()">Ð¡Ð±Ñ€Ð¾ÑÐ¸Ñ‚ÑŒ Ð¿Ñ€Ð¾Ð³Ñ€ÐµÑÑ</button>
+                    <button class="global-undo-btn" onclick="undoLastAction()">Отменить последнее</button>
+                    <button class="reset-btn" onclick="resetAll()">Сбросить прогресс</button>
                 </div>
             </div>
 
             <div id="archive-pane" class="tab-pane archive-pane">
                 <div class="sub-tabs">
-                    <div class="sub-tab-btn active" data-subtab="control">âœï¸ ÐšÐ¾Ð½Ñ‚Ñ€Ð¾Ð»ÑŒÐ½Ð°Ñ Ñ€Ð°Ð±Ð¾Ñ‚Ð° â„–3 | Ð›Ð”Ð£-II</div>
+                    <div class="sub-tab-btn active" data-subtab="control">✍️ Контрольная работа №3 | ЛДУ-II</div>
                 </div>
                 <div id="archive-control" class="sub-tab-pane active-sub-pane">
                     <div id="control-tasks"></div>
@@ -173,9 +173,9 @@
 
             <div id="semester1-pane" class="tab-pane">
                 <div class="sub-tabs">
-                    <div class="sub-tab-btn active" data-subtab="agidu">ðŸ“ ÐÐ“Ð¸Ð¢Ð”Ð£</div>
-                    <div class="sub-tab-btn" data-subtab="math">ðŸ“ ÐœÐ°Ñ‚ÐµÐ¼Ð°Ñ‚Ð¸ÐºÐ°</div>
-                    <div class="sub-tab-btn" data-subtab="discrete">ðŸ’» Ð”Ð¸ÑÐºÑ€ÐµÑ‚Ð½Ð°Ñ Ð¼Ð°Ñ‚ÐµÐ¼Ð°Ñ‚Ð¸ÐºÐ°</div>
+                    <div class="sub-tab-btn active" data-subtab="agidu">📐 АГиТДУ</div>
+                    <div class="sub-tab-btn" data-subtab="math">📐 Математика</div>
+                    <div class="sub-tab-btn" data-subtab="discrete">💻 Дискретная математика</div>
                 </div>
                 <div id="semester1-agidu" class="sub-tab-pane active-sub-pane">
                     <div id="semester1-agidu-list"></div>
@@ -186,7 +186,7 @@
                 <div id="semester1-discrete" class="sub-tab-pane">
                     <div id="semester1-discrete-content">
                         <div class="glass-panel" style="margin: 1rem; padding: 1.2rem; text-align: center; color: var(--pencil);">
-                            ðŸ“– ÐœÐ°Ñ‚ÐµÑ€Ð¸Ð°Ð»Ñ‹ Ð¿Ð¾ Ð´Ð¸ÑÐºÑ€ÐµÑ‚Ð½Ð¾Ð¹ Ð¼Ð°Ñ‚ÐµÐ¼Ð°Ñ‚Ð¸ÐºÐµ Ð±ÑƒÐ´ÑƒÑ‚ Ð´Ð¾Ð±Ð°Ð²Ð»ÐµÐ½Ñ‹ Ð¿Ð¾Ð·Ð¶Ðµ.
+                            📖 Материалы по дискретной математике будут добавлены позже.
                         </div>
                     </div>
                 </div>
@@ -199,15 +199,15 @@
             <div id="physics-ntk-pane" class="tab-pane">
                 <div id="physics-ntk-stats"></div>
                 <div class="sub-tabs" id="physics-ntk-sub-tabs">
-                    <div class="sub-tab-btn active" data-subtab="kinematika">ÐšÐ¸Ð½ÐµÐ¼Ð°Ñ‚Ð¸ÐºÐ°</div>
-                    <div class="sub-tab-btn" data-subtab="dinamika">Ð”Ð¸Ð½Ð°Ð¼Ð¸ÐºÐ°</div>
-                    <div class="sub-tab-btn" data-subtab="vrashatelnoe_dvizhenie">Ð’Ñ€Ð°Ñ‰Ð°Ñ‚ÐµÐ»ÑŒÐ½Ð¾Ðµ Ð´Ð²Ð¸Ð¶ÐµÐ½Ð¸Ðµ Ð¼Ð°Ñ‚ÐµÑ€Ð¸Ð°Ð»ÑŒÐ½Ð¾Ð¹ Ñ‚Ð¾Ñ‡ÐºÐ¸ Ñ‚Ð²Ñ‘Ñ€Ð´Ð¾Ð³Ð¾ Ñ‚ÐµÐ»Ð°</div>
-                    <div class="sub-tab-btn" data-subtab="molekulyarnaya_fizika">ÐœÐ¾Ð»ÐµÐºÑƒÐ»ÑÑ€Ð½Ð°Ñ Ñ„Ð¸Ð·Ð¸ÐºÐ°</div>
-                    <div class="sub-tab-btn" data-subtab="termodinamika">Ð¢ÐµÑ€Ð¼Ð¾Ð´Ð¸Ð½Ð°Ð¼Ð¸ÐºÐ°</div>
-                    <div class="sub-tab-btn" data-subtab="elektrostatika">Ð­Ð»ÐµÐºÑ‚Ñ€Ð¾ÑÑ‚Ð°Ñ‚Ð¸ÐºÐ°</div>
-                    <div class="sub-tab-btn" data-subtab="postoyanny_tok">ÐŸÐ¾ÑÑ‚Ð¾ÑÐ½Ð½Ñ‹Ð¹ ÑÐ»ÐµÐºÑ‚Ñ€Ð¸Ñ‡ÐµÑÐºÐ¸Ð¹ Ñ‚Ð¾Ðº</div>
-                    <div class="sub-tab-btn" data-subtab="magnetizm">ÐœÐ°Ð³Ð½ÐµÑ‚Ð¸Ð·Ð¼</div>
-                    <div class="sub-tab-btn" data-subtab="elektromagnitnaya_induktsiya">Ð­Ð»ÐµÐºÑ‚Ñ€Ð¾Ð¼Ð°Ð³Ð½Ð¸Ñ‚Ð½Ð°Ñ Ð¸Ð½Ð´ÑƒÐºÑ†Ð¸Ñ</div>
+                    <div class="sub-tab-btn active" data-subtab="kinematika">Кинематика</div>
+                    <div class="sub-tab-btn" data-subtab="dinamika">Динамика</div>
+                    <div class="sub-tab-btn" data-subtab="vrashatelnoe_dvizhenie">Вращательное движение материальной точки твёрдого тела</div>
+                    <div class="sub-tab-btn" data-subtab="molekulyarnaya_fizika">Молекулярная физика</div>
+                    <div class="sub-tab-btn" data-subtab="termodinamika">Термодинамика</div>
+                    <div class="sub-tab-btn" data-subtab="elektrostatika">Электростатика</div>
+                    <div class="sub-tab-btn" data-subtab="postoyanny_tok">Постоянный электрический ток</div>
+                    <div class="sub-tab-btn" data-subtab="magnetizm">Магнетизм</div>
+                    <div class="sub-tab-btn" data-subtab="elektromagnitnaya_induktsiya">Электромагнитная индукция</div>
                 </div>
                 <div id="physics-ntk-kinematika" class="sub-tab-pane active-sub-pane">
                     <div id="physics-ntk-kinematika-list"></div>
@@ -247,6 +247,6 @@
 <script src="src/auth/firebase-sync.js?v=2"></script>
 <script src="src/app/data-loader.js?v=1"></script>
 <script src="src/app/app.js?v=48"></script>
-    <script src="src/app/ux-enhancements.js?v=5"></script>
+    <script src="src/app/ux-enhancements.js?v=7"></script>
 </body>
 </html>

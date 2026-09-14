@@ -1,33 +1,45 @@
-const CACHE = 'urfupobeda-ui-v5';
-const scopeUrl = new URL(self.registration.scope);
-const local = (path) => new URL(path, scopeUrl).toString();
-const CORE = ['./', './index.html', './assets/css/style.css', './assets/css/ux-overrides.css', './src/app/app.js', './src/app/ux-enhancements.js'];
+const CACHE = 'urfupobeda-ui-v7';
+const SHELL = [
+  './',
+  './index.html',
+  './assets/css/style.css',
+  './assets/css/ux-overrides.css',
+  './assets/img/logo.svg',
+  './src/app/data-loader.js',
+  './src/app/app.js',
+  './src/app/ux-enhancements.js',
+  './src/auth/firebase-init.js',
+  './src/auth/firebase-auth.js',
+  './src/auth/firebase-sync.js'
+];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => Promise.allSettled(CORE.map((p) => cache.add(local(p))))).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).catch(() => {}));
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(Promise.all([
+    caches.keys().then((names) => Promise.all(names.filter((name) => (name.startsWith('marvin-') || name.startsWith('urfupobeda-')) && name !== CACHE).map((name) => caches.delete(name)))),
+    self.clients.claim()
+  ]));
 });
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  if (url.origin !== location.origin) return;
-
-  const isFreshCode = event.request.mode === 'navigate' || /\.(?:html|css|js)$/.test(url.pathname);
-  if (isFreshCode) {
+  if (url.origin !== self.location.origin) return;
+  const isNavigation = event.request.mode === 'navigate';
+  const isCode = /\.(?:html|css|js)$/.test(url.pathname);
+  if (isNavigation || isCode) {
     event.respondWith(fetch(event.request).then((response) => {
-      const copy = response.clone();
-      caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+      if (response && response.ok) caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())).catch(() => {});
       return response;
-    }).catch(() => caches.match(event.request).then((cached) => cached || caches.match(local('./index.html')))));
+    }).catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html'))));
     return;
   }
-
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
-    if (response.ok) caches.open(CACHE).then((cache) => cache.put(event.request, response.clone()));
+    if (response && response.ok) caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())).catch(() => {});
     return response;
   })));
 });
