@@ -1,15 +1,11 @@
-const CACHE = 'marvin-v9-pages'
+const CACHE = 'marvin-v11-pages'
 const FILES = [
   './',
   './index.html',
   './assets/css/style.css',
   './assets/img/logo.svg',
-  './assets/img/agitdu/no_phone2.png',
+  './src/app/data-loader.js',
   './src/app/app.js',
-  './src/data/conspects.js',
-  './src/data/integrals_data.js',
-  './src/data/semester1_data.js',
-  './src/data/physics_ntk_data.js',
   './src/auth/firebase-init.js',
   './src/auth/firebase-auth.js',
   './src/auth/firebase-sync.js'
