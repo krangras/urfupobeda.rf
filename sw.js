@@ -1,18 +1,18 @@
-const CACHE = 'marvin-v10-profile'
+const CACHE = 'marvin-v9-pages'
 const FILES = [
-  '/',
-  '/index.html',
-  '/assets/css/style.css',
-  '/assets/img/logo.svg',
-  '/assets/img/agitdu/no_phone2.png',
-  '/src/app/app.js',
-  '/src/data/conspects.js',
-  '/src/data/integrals_data.js',
-  '/src/data/semester1_data.js',
-  '/src/data/physics_ntk_data.js',
-  '/src/auth/firebase-init.js',
-  '/src/auth/firebase-auth.js',
-  '/src/auth/firebase-sync.js'
+  './',
+  './index.html',
+  './assets/css/style.css',
+  './assets/img/logo.svg',
+  './assets/img/agitdu/no_phone2.png',
+  './src/app/app.js',
+  './src/data/conspects.js',
+  './src/data/integrals_data.js',
+  './src/data/semester1_data.js',
+  './src/data/physics_ntk_data.js',
+  './src/auth/firebase-init.js',
+  './src/auth/firebase-auth.js',
+  './src/auth/firebase-sync.js'
 ]
 
 self.addEventListener('install', e => {
@@ -32,8 +32,9 @@ self.addEventListener('activate', e => {
 })
 
 self.addEventListener('fetch', e => {
-  const isSelf = e.request.method === 'GET' && new URL(e.request.url).origin === self.location.origin;
-  if (!isSelf) return;
+  const isSelf = e.request.method === 'GET' && new URL(e.request.url).origin === self.location.origin
+  if (!isSelf) return
+
   e.respondWith(
     fetch(e.request)
       .then(res => {
