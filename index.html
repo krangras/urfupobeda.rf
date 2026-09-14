@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <meta name="theme-color" content="#16233d">
+<meta name="theme-color" content="#111a2d">
+    <meta name="description" content="Билеты, интервальные повторения, задачи и конспекты для подготовки к экзаменам УрФУ">
     <title>урфупобеда.рф — подготовка к экзаменам</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +12,7 @@
     <link rel="preconnect" href="https://www.gstatic.com">
     <link rel="preconnect" href="https://firebasestorage.googleapis.com">
     <link rel="stylesheet" href="assets/css/style.css?v=26">
-    <link rel="stylesheet" href="assets/css/ux-overrides.css?v=2">
+    <link rel="stylesheet" href="assets/css/ux-overrides.css?v=3">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
@@ -46,7 +47,7 @@
             <img src="assets/img/logo.svg" alt="урфупобеда.рф" class="hero-logo" draggable="false">
             <img src="assets/img/agitdu/no_phone2.png" alt="Не на телефоне!" class="hero-warn" draggable="false">
         </div>
-        <div class="hero-subtitle">Материалы и тренажёры для подготовки к экзаменам</div>
+        <div class="hero-subtitle">Билеты, повторения, задачи и физика — всё в одном месте</div>
     </div>
 
 <aside class="sidebar" id="sidebar">
@@ -68,7 +69,7 @@
                 <div class="sidebar-progress-text" id="sidebar-progress-text">0%</div>
             </div>
             <div class="sidebar-archive-section" style="margin-top: 12px;">
-                <div class="sidebar-section-title" style="color: var(--ink-blue); font-size: 1rem;">Экзамен</div>
+                <div class="sidebar-section-title" style="color: var(--ink-blue); font-size: 1rem;">Билеты · 2 сем</div>
             </div>
             <div style="padding-left: 12px;">
                 <div class="sidebar-section-title" style="font-size: 0.85rem;">Теория</div>
@@ -84,7 +85,7 @@
             </div>
             <div class="sidebar-archive-section">
                 <div class="sidebar-section-title">1 семестр</div>
-                <div class="sidebar-item" onclick="switchToSemester1Subtab('agidu')">📐 АГиТДУ — экз 1 сем</div>
+                <div class="sidebar-item" onclick="switchToSemester1Subtab('agidu')">📐 Алгебра, геометрия и ТДУ · 1 сем</div>
                 <div class="sidebar-item" onclick="switchToSemester1Subtab('math')">📐 Математика — Интегралы</div>
                 <div class="sidebar-item" onclick="switchToSemester1Subtab('discrete')">💻 Дискретная математика</div>
             </div>
@@ -102,9 +103,9 @@
 <div class="main-layout">
     <div class="main-content">
             <div class="tabs">
-                <div class="tab-btn active" data-tab="exam">Экзамен</div>
-                <div class="tab-btn" data-tab="exam-tasks">Задачи экзамена</div>
-                <div class="tab-btn" data-tab="physics-ntk">Физика НТК</div>
+                <div class="tab-btn active" data-tab="exam">Билеты · 2 сем</div>
+                <div class="tab-btn" data-tab="exam-tasks">Задачи</div>
+                <div class="tab-btn" data-tab="physics-ntk">Физика</div>
             </div>
 
             <div id="exam-pane" class="tab-pane active-pane">
@@ -248,6 +249,6 @@
 <script src="src/auth/firebase-sync.js?v=2"></script>
 <script src="src/app/data-loader.js?v=1"></script>
 <script src="src/app/app.js?v=48"></script>
-    <script src="src/app/ux-enhancements.js?v=2"></script>
+    <script src="src/app/ux-enhancements.js?v=3"></script>
 </body>
 </html>

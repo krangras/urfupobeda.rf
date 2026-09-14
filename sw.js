@@ -1,45 +1,56 @@
-const CACHE = 'marvin-v11-pages'
+const CACHE = 'urfupobeda-ui-v3';
+const SCOPE = new URL('./', self.location.href);
 const FILES = [
   './',
   './index.html',
   './assets/css/style.css',
+  './assets/css/ux-overrides.css',
   './assets/img/logo.svg',
-  './src/app/data-loader.js',
+  './assets/img/agitdu/no_phone2.png',
   './src/app/app.js',
+  './src/app/ux-enhancements.js',
+  './src/data/conspects.js',
+  './src/data/integrals_data.js',
+  './src/data/semester1_data.js',
+  './src/data/physics_ntk_data.js',
   './src/auth/firebase-init.js',
   './src/auth/firebase-auth.js',
   './src/auth/firebase-sync.js'
-]
+].map(path => new URL(path, SCOPE).href);
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(FILES))
-  )
-  self.skipWaiting()
-})
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE)
+      .then(cache => Promise.allSettled(FILES.map(url => cache.add(url))))
+      .then(() => self.skipWaiting())
+  );
+});
 
-self.addEventListener('activate', e => {
-  e.waitUntil(Promise.all([
-    caches.keys().then(names =>
-      Promise.all(names.filter(n => n !== CACHE).map(n => caches.delete(n)))
-    ),
-    clients.claim()
-  ]))
-})
+self.addEventListener('activate', event => {
+  event.waitUntil(Promise.all([
+    caches.keys().then(names => Promise.all(names.filter(name => name !== CACHE).map(name => caches.delete(name)))),
+    self.clients.claim()
+  ]));
+});
 
-self.addEventListener('fetch', e => {
-  const isSelf = e.request.method === 'GET' && new URL(e.request.url).origin === self.location.origin
-  if (!isSelf) return
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin || !url.href.startsWith(SCOPE.href)) return;
 
-  e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        if (res && res.ok) {
-          const clone = res.clone()
-          caches.open(CACHE).then(c => c.put(e.request, clone)).catch(() => {})
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        if (response && response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE).then(cache => cache.put(event.request, clone)).catch(() => {});
         }
-        return res
+        return response;
       })
-      .catch(() => caches.match(e.request).then(r => r || new Response('', { status: 503 })))
-  )
-})
+      .catch(() => caches.match(event.request).then(cached => {
+        if (cached) return cached;
+        if (event.request.mode === 'navigate') return caches.match(new URL('./index.html', SCOPE).href);
+        return new Response('', { status: 503, statusText: 'Offline' });
+      }))
+  );
+});
