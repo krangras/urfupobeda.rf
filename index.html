@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-<meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#fdf8ef">
     <meta name="description" content="Билеты, интервальные повторения, задачи и конспекты для подготовки к экзаменам УрФУ">
     <title>урфупобеда.рф — подготовка к экзаменам</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,31 +11,15 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://www.gstatic.com">
     <link rel="preconnect" href="https://firebasestorage.googleapis.com">
-    <link rel="stylesheet" href="assets/css/style.css?v=26">
-    <link rel="stylesheet" href="assets/css/ux-overrides.css?v=7">
+    <link rel="stylesheet" href="assets/css/style.css?v=27">
+<link rel="stylesheet" href="assets/css/ux-overrides.css?v=10">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
-        onload="if(document.body){renderMathInElement(document.body, {
-            delimiters: [
-                {left: '$$', right: '$$', display: true},
-                {left: '\\[', right: '\\]', display: true},
-                {left: '$', right: '$', display: false},
-                {left: '\\(', right: '\\)', display: false}
-            ],
-            macros: {
-                '\\tg': '\\operatorname{tg}',
-                '\\ctg': '\\operatorname{ctg}',
-                '\\arctg': '\\operatorname{arctg}'
-            },
-            throwOnError: false,
-            trust: true,
-            strict: false
-        })}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script>try{if('serviceWorker'in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('./sw.js?v=7').catch(()=>{})}}catch(e){}</script>
+    <script>try{if('serviceWorker'in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('./sw.js?v=9').catch(()=>{})}}catch(e){}</script>
 </head>
 <body>
 <div class="container">
@@ -58,37 +42,10 @@
     <div class="sidebar-content">
         <div class="sidebar-content-inner">
             <div class="sidebar-pin-row">
-                <span class="sidebar-pin-label">Навигация</span>
+                <span class="sidebar-pin-label">Курсы</span>
                 <button class="sidebar-pin-btn" id="sidebar-pin" onclick="toggleSidebarPin()" title="Закрепить">📌</button>
             </div>
-            <div class="sidebar-progress" id="sidebar-progress">
-                <div class="sidebar-progress-label">Прогресс</div>
-                <div class="sidebar-progress-bar">
-                    <div class="sidebar-progress-fill" id="sidebar-progress-fill"></div>
-                </div>
-                <div class="sidebar-progress-text" id="sidebar-progress-text">0%</div>
-            </div>
-            <div class="sidebar-archive-section" style="margin-top: 12px;">
-                <div class="sidebar-section-title" style="color: var(--ink-blue); font-size: 1rem;">Билеты · 2 сем</div>
-            </div>
-            <div style="padding-left: 12px;">
-                <div class="sidebar-section-title" style="font-size: 0.85rem;">Теория</div>
-            </div>
-            <div class="sidebar-ticket-list" id="sidebar-tickets"></div>
-            <div style="padding-left: 12px;">
-                <div class="sidebar-section-title" style="font-size: 0.85rem;">Практика</div>
-            </div>
-            <div class="sidebar-practice-list" id="sidebar-practice"></div>
-            <div class="sidebar-archive-section">
-                <div class="sidebar-section-title">Архив</div>
-                <div class="sidebar-item" onclick="switchToArchiveSubtab('control')">Контрольная АГиТДУ · 2 семестр</div>
-            </div>
-            <div class="sidebar-archive-section">
-                <div class="sidebar-section-title">1 семестр</div>
-                <div class="sidebar-item" onclick="switchToSemester1Subtab('agidu')">Алгебра, геометрия и ТДУ</div>
-                <div class="sidebar-item" onclick="switchToSemester1Subtab('math')">Математика · интегралы</div>
-                <div class="sidebar-item" onclick="switchToSemester1Subtab('discrete')">Дискретная математика</div>
-            </div>
+            <nav id="course-navigation" aria-label="Курсы и темы"></nav>
         </div>
     </div>
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
@@ -246,7 +203,8 @@
 <script src="src/auth/firebase-auth.js?v=2"></script>
 <script src="src/auth/firebase-sync.js?v=2"></script>
 <script src="src/app/data-loader.js?v=1"></script>
-<script src="src/app/app.js?v=48"></script>
-    <script src="src/app/ux-enhancements.js?v=7"></script>
+<script src="src/app/app.js?v=49"></script>
+    <script src="src/app/ux-enhancements.js?v=9"></script>
+<script src="src/app/course-navigation.js?v=2"></script>
 </body>
 </html>

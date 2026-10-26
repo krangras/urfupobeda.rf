@@ -61,6 +61,7 @@ let semester1State = null;
 let lastAction = null;
 let semester1LastAction = null;
 let renderScheduled = false;
+let pendingRenderIds = new Set();
 let scrollPositionToRestore = 0;
 let openTicketsToRestore = new Set();
 
@@ -71,6 +72,7 @@ function saveToLocalStorage() {
 
 function saveSemester1State() {
     saveToStorage('semester1_progress', JSON.stringify(semester1State));
+    window.CourseNavigation?.refresh();
 }
 
 const OLD_TICKET_NAMES = [
@@ -212,6 +214,7 @@ function updateRankUI() {
 
 // ========== САЙДБАР ==========
 function renderSidebar() {
+    if (window.CourseNavigation) { window.CourseNavigation.refresh(); return; }
     const list = document.getElementById('sidebar-tickets');
     if (!list) return;
     const now = new Date();
@@ -333,6 +336,7 @@ function toggleModule(mi, e) {
 }
 
 function renderPracticeSidebar() {
+    if (window.CourseNavigation) { window.CourseNavigation.refresh(); return; }
     const list = document.getElementById('sidebar-practice');
     if (!list) return;
     if (typeof examTasksData === 'undefined') {
@@ -648,13 +652,46 @@ function addCollapseBtn(cheatsheetDiv, idx, type) {
     };
 }
 
-function scheduleRender() {
-    if (renderScheduled) return;
+function scheduleRender(id) {
+    if (renderScheduled) {
+        pendingRenderIds.add(id === undefined ? '__all__' : id);
+        return;
+    }
     renderScheduled = true;
-    setTimeout(() => {
-        render();
+    requestAnimationFrame(() => {
+        const card = id === undefined ? null : document.querySelector(`#list > .ticket[data-idx="${id}"]`);
+        if (card) {
+            const item = state[id];
+            const now = new Date(); now.setHours(0, 0, 0, 0);
+            const ready = !item.nextReview || new Date(item.nextReview) <= now;
+            card.classList.toggle('ready', ready);
+            card.classList.toggle('waiting', !ready);
+            card.querySelector('.ticket-meta').textContent = `шаг: ${item.step}/${intervals.length} | ${item.nextReview ? `повтор: ${new Date(item.nextReview).toLocaleDateString('ru-RU')}` : '📖 не изучен'} | повторов: ${item.history?.length || 0}`;
+            card.querySelector('.undo-btn').disabled = item.step <= 0;
+            const study = card.querySelector('.action-buttons .action-btn');
+            study.disabled = !ready;
+            study.textContent = item.step === 0 ? '✅ Изучить' : '🔄 Повторил';
+            const mastered = state.filter(s => s.step >= intervals.length).length;
+            const learning = state.filter(s => s.step > 0 && s.step < intervals.length).length;
+            const notStarted = state.filter(s => s.step === 0).length;
+            const readyCount = state.filter(s => !s.nextReview || new Date(s.nextReview) <= now).length;
+            const repeats = state.reduce((sum, s) => sum + (s.history?.length || 0), 0);
+            const setText = (selector, value) => { const node = document.querySelector(selector); if (node) node.textContent = value; };
+            setText('#stat-mastered', mastered);
+            setText('#stat-learning', learning);
+            setText('#stat-notstarted', notStarted);
+            setText('#stat-totalrepeats', repeats);
+            setText('#count-ready', readyCount);
+            updatePace(); updateRankUI(); updateTabTitle(); renderSidebar();
+            window.CourseNavigation?.refresh();
+        } else render();
         renderScheduled = false;
-    }, 30);
+        if (pendingRenderIds.size) {
+            const pending = Array.from(pendingRenderIds);
+            pendingRenderIds.clear();
+            pending.forEach(ticketId => scheduleRender(ticketId === '__all__' ? undefined : ticketId));
+        }
+    });
 }
 
 function advanceTicket(id) {
@@ -676,7 +713,7 @@ function advanceTicket(id) {
         next.setDate(now.getDate() + intervals[intervals.length - 1]);
         item.nextReview = next.getTime();
         saveToLocalStorage();
-        scheduleRender();
+        scheduleRender(id);
         return;
     }
 
@@ -686,7 +723,7 @@ function advanceTicket(id) {
     item.step++;
     item.nextReview = next.getTime();
     saveToLocalStorage();
-    scheduleRender();
+    scheduleRender(id);
 }
 
 function advanceSemester1Ticket(id) {
@@ -706,7 +743,7 @@ function advanceSemester1Ticket(id) {
         next.setDate(now.getDate() + semester1Intervals[semester1Intervals.length - 1]);
         item.nextReview = next.getTime();
         saveSemester1State();
-        scheduleSemester1Render();
+        scheduleSemester1Render(id);
         return;
     }
 
@@ -716,7 +753,7 @@ function advanceSemester1Ticket(id) {
     item.step++;
     item.nextReview = next.getTime();
     saveSemester1State();
-    scheduleSemester1Render();
+    scheduleSemester1Render(id);
 }
 
 function undoSemester1Ticket(id) {
@@ -750,7 +787,7 @@ function undoSemester1Ticket(id) {
     }
 
     saveSemester1State();
-    scheduleSemester1Render();
+    scheduleSemester1Render(id);
 }
 
 function undoLastSemester1Action() {
@@ -819,8 +856,29 @@ function showSemester1History(id) {
     document.body.appendChild(overlay);
 }
 
-function scheduleSemester1Render() {
-    requestAnimationFrame(() => renderSemester1AGiTDU());
+function scheduleSemester1Render(id) {
+    requestAnimationFrame(() => {
+        const card = id === undefined ? null : document.querySelector(`#semester1-agidu-list > .ticket[data-idx="${id}"]`);
+        if (!card) { renderSemester1AGiTDU(); return; }
+        const item = semester1State[id];
+        if (!item) return;
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        const ready = !item.nextReview || new Date(item.nextReview) <= now;
+        card.classList.toggle('ready', ready);
+        card.classList.toggle('waiting', !ready);
+        card.querySelector('.ticket-meta').textContent = `шаг: ${item.step}/${semester1Intervals.length} | ${item.nextReview ? `повтор: ${new Date(item.nextReview).toLocaleDateString('ru-RU')}` : '📖 не изучен'} | повторов: ${item.history?.length || 0}`;
+        card.querySelector('.undo-btn').disabled = item.step <= 0;
+        const study = card.querySelector('.action-buttons .action-btn');
+        study.disabled = !ready;
+        study.textContent = item.step === 0 ? '✅ Изучить' : '🔄 Повторил';
+        const stats = document.getElementById('semester1-progress-stats');
+        if (stats) {
+            stats.children[1].textContent = `✅ Освоено: ${semester1State.filter(s => s.step >= semester1Intervals.length).length}`;
+            stats.children[2].textContent = `🔄 В процессе: ${semester1State.filter(s => s.step > 0 && s.step < semester1Intervals.length).length}`;
+            stats.children[3].textContent = `⏳ Не начато: ${semester1State.filter(s => s.step === 0).length}`;
+        }
+        window.CourseNavigation?.refresh();
+    });
 }
 
 function undoForTicket(id) {
@@ -863,7 +921,7 @@ function undoForTicket(id) {
     }
     
     saveToLocalStorage();
-    scheduleRender();
+    scheduleRender(id);
 }
 
 function undoLastAction() {
@@ -1419,10 +1477,7 @@ function typesetKaTeX(elements, doneCallback) {
     katexQueue = katexQueue.then(() => {
         const valid = (elements || []).filter(el => el && el.nodeType === 1);
         if (valid.length === 0) { if (doneCallback) doneCallback(); return; }
-        valid.forEach(el => {
-            try {
-                if (el.querySelector && el.querySelector('.katex')) return;
-                renderMathInElement(el, {
+        const options = {
                     delimiters: [
                         {left: '$$', right: '$$', display: true},
                         {left: '\\[', right: '\\]', display: true},
@@ -1437,12 +1492,24 @@ function typesetKaTeX(elements, doneCallback) {
                     throwOnError: false,
                     trust: true,
                     strict: false
-                });
-            } catch (err) {
-                console.log('KaTeX error on element:', err);
+                };
+        let index = 0;
+        const renderChunk = () => {
+            const end = Math.min(index + 2, valid.length);
+            while (index < end) {
+                const el = valid[index++];
+                try {
+                    if (el.isConnected && !(el.querySelector && el.querySelector('.katex'))) renderMathInElement(el, options);
+                } catch (err) {
+                    console.log('KaTeX error on element:', err);
+                }
             }
-        });
-        if (doneCallback) doneCallback();
+            if (index < valid.length) {
+                if (window.requestIdleCallback) requestIdleCallback(renderChunk, { timeout: 120 });
+                else setTimeout(renderChunk, 0);
+            } else if (doneCallback) doneCallback();
+        };
+        renderChunk();
     });
 }
 
@@ -2025,7 +2092,7 @@ function selectPhysicsOption(sectionId, problemIdx, optIdx) {
     }
     savePhysicsAnswers();
     savePhysicsProgress();
-    renderPhysicsNtk(sectionId);
+    renderPhysicsNtk(sectionId, problemIdx);
 }
 
 function checkPhysicsAnswer(sectionId, problemIdx) {
@@ -2049,7 +2116,7 @@ function checkPhysicsAnswer(sectionId, problemIdx) {
     }
     savePhysicsAnswers();
     savePhysicsProgress();
-    renderPhysicsNtk(sectionId);
+    renderPhysicsNtk(sectionId, problemIdx);
 }
 
 function updatePhysicsSectionStats(sectionId) {
@@ -2081,7 +2148,7 @@ function togglePhysicsOption(sectionId, problemIdx, optIdx) {
     }
     physicsAnswers[key] = selected.join(',');
     savePhysicsAnswers();
-    renderPhysicsNtk(sectionId);
+    renderPhysicsNtk(sectionId, problemIdx);
 }
 
 function checkPhysicsMultiSelect(sectionId, problemIdx) {
@@ -2109,7 +2176,7 @@ function checkPhysicsMultiSelect(sectionId, problemIdx) {
     }
     savePhysicsAnswers();
     savePhysicsProgress();
-    renderPhysicsNtk(sectionId);
+    renderPhysicsNtk(sectionId, problemIdx);
 }
 
 function togglePhysicsSolution(sectionId, problemIdx) {
@@ -2120,7 +2187,7 @@ function togglePhysicsSolution(sectionId, problemIdx) {
         physicsAnswers[solKey] = '1';
     }
     savePhysicsAnswers();
-    renderPhysicsNtk(sectionId);
+    renderPhysicsNtk(sectionId, problemIdx);
 }
 
 function savePhysicsTypedAnswer(sectionId, problemIdx, value) {
@@ -2706,8 +2773,26 @@ function updateExamUI() {
     const groups = buildExamGroups();
     const savedGroup = localStorage.getItem('exam_selected_group') || '0';
     const selectedGroup = groups[savedGroup] ? savedGroup : '0';
-    renderExamGroup(selectedGroup);
-
+    groups[selectedGroup].taskIds.forEach(taskId => {
+        const card = document.querySelector(`.task-card[data-task-id="exam_${taskId}"]`);
+        if (!card) return;
+        const completed = !!examTasksProgress[taskId];
+        card.classList.toggle('completed', completed);
+        const checkbox = card.querySelector(`#exam_chk_${taskId}`);
+        if (checkbox) checkbox.checked = completed;
+        const title = card.querySelector(`#exam_title_${taskId}`);
+        if (title) title.style.textDecoration = completed ? 'line-through' : '';
+        const feedback = examMatrixFeedback[taskId];
+        if (feedback) {
+            const row = card.querySelector('.matrix-check-row');
+            if (row) {
+                let badge = row.querySelector('.matrix-feedback');
+                if (!badge) { badge = document.createElement('span'); badge.className = 'matrix-feedback'; row.append(badge); }
+                badge.className = `matrix-feedback ${feedback === 'correct' ? 'fb-correct' : 'fb-wrong'}`;
+                badge.textContent = feedback === 'correct' ? '✅ Верно!' : '❌ Неверно. Попробуйте ещё раз.';
+            }
+        }
+    });
     const select = el('exam-task-select');
     if (select && select.value !== selectedGroup) {
         select.value = selectedGroup;
@@ -2994,16 +3079,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 60000);
 
     // Тяжёлые модули подгружаем в фоне после первого рендера
-    const bootPrefetch = () => {
-        if (typeof DataLoader !== 'undefined') {
-            DataLoader.prefetch();
-        }
-    };
-    if ('requestIdleCallback' in window) {
-        requestIdleCallback(bootPrefetch, { timeout: 3000 });
-    } else {
-        setTimeout(bootPrefetch, 600);
-    }
+    // Тяжёлые учебные данные загружаются только при открытии соответствующего курса.
 
     if (typeof onReinit === 'function') {
         onReinit(() => {
@@ -3111,6 +3187,7 @@ async function renderSemester1AGiTDU() {
 
     const statsDiv = document.createElement('div');
     statsDiv.className = 'glass-panel';
+    statsDiv.id = 'semester1-progress-stats';
     statsDiv.style.cssText = 'margin: 1rem; padding: 0.8rem 1.2rem; display: flex; gap: 2rem; flex-wrap: wrap;';
     statsDiv.innerHTML = `
         <div><strong>📊 Прогресс 1 семестра</strong></div>
@@ -3616,7 +3693,7 @@ async function renderPhysicsNtkStats() {
     `;
 }
 
-async function renderPhysicsNtk(subtabId) {
+async function renderPhysicsNtk(subtabId, onlyProblemIdx) {
     const savedScrollY = window.scrollY;
     if (typeof PHYSICS_NTK_DATA === 'undefined') {
         try { await window.DataLoader.load('physics'); } catch (err) { console.error(err); return; }
@@ -3631,12 +3708,13 @@ async function renderPhysicsNtk(subtabId) {
         const container = document.getElementById(`physics-ntk-${section.id}-list`);
         if (!container) continue;
         saveVisiblePhysicsInputs(section.id);
-        container.innerHTML = '';
+        if (onlyProblemIdx === undefined) container.innerHTML = '';
         if (section.problems.length === 0) {
             container.innerHTML = '<div class="glass-panel" style="margin: 1rem; padding: 1.2rem; text-align: center; color: var(--pencil);">📖 Задачи будут добавлены позже.</div>';
             continue;
         }
         section.problems.forEach((problem, idx) => {
+            if (onlyProblemIdx !== undefined && idx !== onlyProblemIdx) return;
             const key = `${section.id}_${idx}`;
             const solvedFlag = !!physicsProgress[key];
             const card = document.createElement('div');
@@ -3754,10 +3832,13 @@ async function renderPhysicsNtk(subtabId) {
                 html += `</div>`;
             }
             card.innerHTML = html;
-            container.appendChild(card);
+            if (onlyProblemIdx === undefined) container.appendChild(card);
+            else container.querySelector(`[data-phys-key="${section.id}_${idx}"]`)?.replaceWith(card);
         });
         updatePhysicsSectionStats(section.id);
-        const elements = Array.from(container.querySelectorAll('.phys-card'));
+        const elements = onlyProblemIdx === undefined
+            ? Array.from(container.querySelectorAll('.phys-card'))
+            : [container.querySelector(`[data-phys-key="${section.id}_${onlyProblemIdx}"]`)].filter(Boolean);
         typesetKaTeX(elements, () => {});
     }
     renderPhysicsNtkStats();

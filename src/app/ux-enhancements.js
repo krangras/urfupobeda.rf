@@ -84,29 +84,8 @@
 
   function forceStaticLabels() {
     setText(document.querySelector('.hero-subtitle'), '\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0430 \u043a \u044d\u043a\u0437\u0430\u043c\u0435\u043d\u0430\u043c');
-    setText(document.querySelector('.sidebar-pin-label'), '\u041d\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u044f');
+    setText(document.querySelector('.sidebar-pin-label'), '\u041a\u0443\u0440\u0441\u044b');
     setText(document.querySelector('.sidebar-progress-label'), '\u041f\u0440\u043e\u0433\u0440\u0435\u0441\u0441');
-
-    const paddedTitles = document.querySelectorAll('.sidebar-content-inner > div[style*="padding-left"] .sidebar-section-title');
-    setText(paddedTitles[0], '\u0422\u0435\u043e\u0440\u0438\u044f \xb7 2 \u0441\u0435\u043c\u0435\u0441\u0442\u0440');
-    setText(paddedTitles[1], '\u041f\u0440\u0430\u043a\u0442\u0438\u043a\u0430');
-
-    const sections = Array.from(document.querySelectorAll('.sidebar-archive-section'));
-    if (sections[0]) sections[0].classList.add('ux-remove-section');
-    if (sections[1]) {
-      sections[1].classList.add('ux-archive-section');
-      setText(sections[1].querySelector('.sidebar-section-title'), '\u0410\u0440\u0445\u0438\u0432');
-      const control = sections[1].querySelector('.sidebar-item:not(.ux-archive-practice)');
-      setText(control, '\u041a\u043e\u043d\u0442\u0440\u043e\u043b\u044c\u043d\u0430\u044f \u0410\u0413\u0438\u0422\u0414\u0423 \xb7 2 \u0441\u0435\u043c\u0435\u0441\u0442\u0440');
-    }
-    if (sections[2]) {
-      sections[2].classList.add('ux-sem1-section');
-      setText(sections[2].querySelector('.sidebar-section-title'), '1 \u0441\u0435\u043c\u0435\u0441\u0442\u0440');
-      const items = sections[2].querySelectorAll('.sidebar-item');
-      setText(items[0], '\u0410\u043b\u0433\u0435\u0431\u0440\u0430, \u0433\u0435\u043e\u043c\u0435\u0442\u0440\u0438\u044f \u0438 \u0422\u0414\u0423');
-      setText(items[1], '\u041c\u0430\u0442\u0435\u043c\u0430\u0442\u0438\u043a\u0430 \xb7 \u0438\u043d\u0442\u0435\u0433\u0440\u0430\u043b\u044b');
-      setText(items[2], '\u0414\u0438\u0441\u043a\u0440\u0435\u0442\u043d\u0430\u044f \u043c\u0430\u0442\u0435\u043c\u0430\u0442\u0438\u043a\u0430');
-    }
 
     const toolbar = document.querySelector('#exam-pane > .toolbar');
     if (toolbar) {
@@ -131,92 +110,6 @@
         if (/^v\d+(?:\.\d+){1,3}$/i.test(text) || text === 'changelog' || text === '\u0438\u0441\u0442\u043e\u0440\u0438\u044f \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0439') el.remove();
       });
     });
-  }
-
-  function ensureSearch() {
-    const inner = document.querySelector('.sidebar-content-inner');
-    if (!inner || inner.querySelector('.ux-sidebar-tools')) return;
-    const tools = document.createElement('div');
-    tools.className = 'ux-sidebar-tools';
-    tools.innerHTML = `<label class="ux-sidebar-search" for="${SEARCH_ID}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.6-3.6"></path></svg><input id="${SEARCH_ID}" type="search" autocomplete="off" spellcheck="false" placeholder="\u0411\u0438\u043b\u0435\u0442, \u0442\u0435\u043c\u0430, \u0440\u0430\u0437\u0434\u0435\u043b"><button class="ux-search-clear" type="button" aria-label="\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c">\xd7</button></label>`;
-    const progress = inner.querySelector('.sidebar-progress');
-    if (progress) progress.insertAdjacentElement('beforebegin', tools); else inner.prepend(tools);
-
-    const input = tools.querySelector('input');
-    const clear = tools.querySelector('button');
-    const apply = () => {
-      tools.classList.toggle('has-value', Boolean(input.value));
-      const q = normalize(input.value);
-      document.querySelectorAll('#sidebar-tickets .sidebar-module, #sidebar .sidebar-item').forEach((el) => {
-        el.classList.toggle('ux-search-hidden', Boolean(q && !normalize(el.textContent).includes(q)));
-      });
-    };
-    input.addEventListener('input', apply);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { input.value = ''; apply(); input.blur(); }
-    });
-    clear.addEventListener('click', (e) => { e.preventDefault(); input.value = ''; apply(); input.focus(); });
-  }
-
-  function openPractice() {
-    document.querySelector('.tab-btn[data-tab="exam-tasks"]')?.click();
-    if (typeof window.closeMobileSidebarAfterNavigation === 'function') window.closeMobileSidebarAfterNavigation();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function makeNavItem(className, text, action) {
-    const item = document.createElement('div');
-    item.className = `sidebar-item ${className}`;
-    item.tabIndex = 0;
-    item.textContent = text;
-    item.addEventListener('click', action);
-    item.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); action(); }
-    });
-    return item;
-  }
-
-  function renderSimplePracticeSidebar() {
-    const list = document.getElementById('sidebar-practice');
-    if (!list) return;
-    const existing = list.querySelector(':scope > .ux-practice-shortcut');
-    if (existing && list.children.length === 1) {
-      setText(existing, '\u041f\u0440\u0430\u043a\u0442\u0438\u043a\u0430 \u0410\u0413\u0438\u0422\u0414\u0423 \xb7 2 \u0441\u0435\u043c\u0435\u0441\u0442\u0440');
-      return;
-    }
-    list.replaceChildren(makeNavItem('ux-practice-shortcut', '\u041f\u0440\u0430\u043a\u0442\u0438\u043a\u0430 \u0410\u0413\u0438\u0422\u0414\u0423 \xb7 2 \u0441\u0435\u043c\u0435\u0441\u0442\u0440', openPractice));
-  }
-
-  function cleanTheorySidebar() {
-    document.querySelectorAll('#sidebar-tickets .sidebar-module-title').forEach((title) => {
-      const clean = repairText(title.textContent).replace(/^\s*\u041c\u043e\u0434\u0443\u043b\u044c\s+\d+[.:]?\s*/i, '').trim();
-      if (clean && title.textContent !== clean) title.textContent = clean;
-    });
-    document.querySelectorAll('#sidebar .sidebar-module-meta, #sidebar .sidebar-lesson-step').forEach((el) => el.remove());
-  }
-
-  function ensureArchivePractice() {
-    const archive = document.querySelector('.ux-archive-section');
-    if (!archive) return;
-    let item = archive.querySelector('.ux-archive-practice');
-    if (!item) {
-      item = makeNavItem('ux-archive-practice', '\u041f\u0440\u0430\u043a\u0442\u0438\u043a\u0430 \u0410\u0413\u0438\u0422\u0414\u0423 \xb7 2 \u0441\u0435\u043c\u0435\u0441\u0442\u0440', openPractice);
-      archive.appendChild(item);
-    } else setText(item, '\u041f\u0440\u0430\u043a\u0442\u0438\u043a\u0430 \u0410\u0413\u0438\u0422\u0414\u0423 \xb7 2 \u0441\u0435\u043c\u0435\u0441\u0442\u0440');
-  }
-
-  function installSidebarHooks() {
-    if (window.__uxSidebarHooksInstalled) return;
-    window.__uxSidebarHooksInstalled = true;
-    if (typeof window.renderSidebar === 'function') {
-      const original = window.renderSidebar;
-      window.renderSidebar = function (...args) {
-        const result = original.apply(this, args);
-        cleanTheorySidebar();
-        return result;
-      };
-    }
-    if (typeof window.renderPracticeSidebar === 'function') window.renderPracticeSidebar = renderSimplePracticeSidebar;
   }
 
   function switchSemester1() {
@@ -393,18 +286,6 @@
     applyFilter(list, list.dataset.uxFilter || localStorage.getItem(FILTER_PREFIX + list.id) || 'all', false);
   }
 
-  function hideOldExamDashboard() {
-    const pane = document.getElementById('exam-pane');
-    if (!pane) return;
-    ['rank-card', 'timer', 'pace-info'].forEach((id) => document.getElementById(id)?.classList.add('ux-old-dashboard'));
-    pane.querySelector(':scope > .stats')?.classList.add('ux-old-dashboard');
-    pane.querySelector(':scope > .stats-grid')?.classList.add('ux-old-dashboard');
-    Array.from(pane.children).forEach((el) => {
-      if (el.classList?.contains('glass-panel') && /\u0442\u0435\u043e\u0440\u0438\u044f/i.test(repairText(el.textContent || ''))) el.classList.add('ux-old-dashboard');
-      if (el.classList?.contains('ornament')) el.classList.add('ux-old-dashboard');
-    });
-  }
-
   function ensureSemester1Figures() {
     const list = document.getElementById('semester1-agidu-list');
     if (!list) return;
@@ -447,12 +328,6 @@
     const sem1List = document.getElementById('semester1-agidu-list');
     ensureFilterBar(examList);
     ensureFilterBar(sem1List);
-    ensureCourseIntro(document.getElementById('exam-pane'), examList, {
-      kicker: '\u0410\u043b\u0433\u0435\u0431\u0440\u0430, \u0433\u0435\u043e\u043c\u0435\u0442\u0440\u0438\u044f \u0438 \u0422\u0414\u0423',
-      title: '2 \u0441\u0435\u043c\u0435\u0441\u0442\u0440 \xb7 \u044d\u043a\u0437\u0430\u043c\u0435\u043d',
-      subtitle: '\u0422\u0435\u043e\u0440\u0438\u044f \u0438 \u0438\u043d\u0442\u0435\u0440\u0432\u0430\u043b\u044c\u043d\u044b\u0435 \u043f\u043e\u0432\u0442\u043e\u0440\u0435\u043d\u0438\u044f.',
-      withToolbar: true
-    });
     ensureCourseIntro(document.getElementById('semester1-agidu'), sem1List, {
       kicker: '\u0410\u043b\u0433\u0435\u0431\u0440\u0430, \u0433\u0435\u043e\u043c\u0435\u0442\u0440\u0438\u044f \u0438 \u0422\u0414\u0423',
       title: '1 \u0441\u0435\u043c\u0435\u0441\u0442\u0440 \xb7 \u044d\u043a\u0437\u0430\u043c\u0435\u043d',
@@ -466,12 +341,7 @@
     repairMojibake();
     forceStaticLabels();
     removeNoise();
-    ensureSearch();
-    cleanTheorySidebar();
-    renderSimplePracticeSidebar();
-    ensureArchivePractice();
     ensureTopTabs();
-    hideOldExamDashboard();
   }
 
   function installListObservers() {
@@ -514,7 +384,6 @@
   function init() {
     document.documentElement.classList.remove('ux-v2', 'ux-v3', 'ux-v4');
     document.documentElement.classList.add('ux-v5');
-    installSidebarHooks();
     installTabHooks();
     bindKeyboard();
     decorateStatic();
@@ -524,9 +393,6 @@
     setTimeout(() => {
       repairMojibake();
       forceStaticLabels();
-      cleanTheorySidebar();
-      renderSimplePracticeSidebar();
-      ensureArchivePractice();
       ensureTopTabs();
       decorateLists();
     }, 350);

@@ -1,4 +1,4 @@
-const CACHE = 'urfupobeda-ui-v7';
+const CACHE = 'urfupobeda-notebook-v9';
 const SHELL = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const SHELL = [
   './src/app/data-loader.js',
   './src/app/app.js',
   './src/app/ux-enhancements.js',
+  './src/app/course-navigation.js',
   './src/auth/firebase-init.js',
   './src/auth/firebase-auth.js',
   './src/auth/firebase-sync.js'
