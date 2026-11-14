@@ -344,7 +344,7 @@ function buildUserInfoHTML(user) {
   return '' +
     '<div class="auth-dropdown-title">Вы вошли</div>' +
     '<div class="auth-user-info">' +
-      '<div class="auth-user-email" title="' + email + '">' + email + '</div>' +
+      '<div class="auth-user-email" title="' + escapeHTML(email) + '">' + escapeHTML(email) + '</div>' +
       '<div class="auth-user-actions">' +
         '<button class="auth-btn-profile" onclick="openProfile()">Профиль</button>' +
         '<button class="auth-btn-logout" onclick="signOutUser()">Выйти</button>' +
@@ -358,11 +358,11 @@ function _updateToggleAvatar(user) {
   if (!user) return;
   var p = _profileData;
   if (p.avatar) {
-    toggle.innerHTML = '<img class="auth-toggle-avatar" src="' + p.avatar + '" alt="">';
+    toggle.innerHTML = '<img class="auth-toggle-avatar" src="' + escapeHTML(p.avatar) + '" alt="">';
   } else {
     var initial = (user.email || 'U').charAt(0).toUpperCase();
     var color = _stringToColor(user.email || 'user');
-    toggle.innerHTML = '<div class="auth-toggle-initial" style="background:' + color + '">' + initial + '</div>';
+    toggle.innerHTML = '<div class="auth-toggle-initial" style="background:' + color + '">' + escapeHTML(initial) + '</div>';
   }
 }
 
@@ -374,7 +374,7 @@ function updateAuthUI(user) {
     toggle.classList.add('logged-in');
     toggle.title = '';
     _updateToggleAvatar(user);
-    toggle.insertAdjacentHTML('beforeend', ' <span>' + (user.email || '').split('@')[0] + '</span>');
+    toggle.insertAdjacentHTML('beforeend', ' <span>' + escapeHTML((user.email || '').split('@')[0]) + '</span>');
     dd.innerHTML = buildUserInfoHTML(user);
   } else {
     toggle.classList.remove('logged-in');
@@ -478,7 +478,8 @@ function loadProfileData() {
   if (!key) return;
   try {
     var raw = localStorage.getItem(key);
-    if (raw) _profileData = JSON.parse(raw);
+    _profileData = { avatar: '', group: '' };
+    if (raw) { const value = readStoredJSON(key, {}); _profileData = { avatar: typeof value.avatar === 'string' ? value.avatar : '', group: typeof value.group === 'string' ? value.group : '' }; }
   } catch (e) {}
 }
 
@@ -498,15 +499,16 @@ function saveProfileData() {
 function loadProfileFromFirestore(user) {
   if (!user || typeof db === 'undefined') return;
   db.collection('users').doc(user.uid).get().then(function (doc) {
+    if (authUser?.uid !== user.uid) return;
     if (doc.exists && doc.data().profile) {
       var remote = doc.data().profile;
       var local = _profileData;
       var merged = false;
-      if (remote.avatar && (!local.avatar || remote.avatar.length > local.avatar.length)) {
+      if (typeof remote.avatar === 'string' && remote.avatar && (!local.avatar || remote.avatar.length > local.avatar.length)) {
         _profileData.avatar = remote.avatar;
         merged = true;
       }
-      if (remote.group !== undefined && (!local.group || remote.group.length > local.group.length)) {
+      if (typeof remote.group === 'string' && (!local.group || remote.group.length > local.group.length)) {
         _profileData.group = remote.group;
         merged = true;
       }
@@ -523,56 +525,33 @@ function loadProfileFromFirestore(user) {
 
 /* ── Progress stats ───────────────────────────────── */
 function _getProgressStats() {
-  var stats = {};
-
-  try {
-    var em = JSON.parse(localStorage.getItem('exam_manager_v9') || '[]');
-    var total = em.length;
-    var done = 0;
-    em.forEach(function (t) {
-      if (t && typeof t.step !== 'undefined' && t.step >= 5) done++;
-    });
-    stats.tickets_total = total;
-    stats.tickets_done = done;
-  } catch (e) { stats.tickets_total = 0; stats.tickets_done = 0; }
-
-  try {
-    var et = JSON.parse(localStorage.getItem('exam_tasks_progress') || '{}');
-    var etKeys = Object.keys(et);
-    var etDone = etKeys.filter(function (k) { return et[k] === true || et[k] === 1; }).length;
-    stats.tasks_total = etKeys.length;
-    stats.tasks_done = etDone;
-  } catch (e) { stats.tasks_total = 0; stats.tasks_done = 0; }
-
-  try {
-    var ph = JSON.parse(localStorage.getItem('physics_progress') || '{}');
-    var phKeys = Object.keys(ph);
-    var phDone = phKeys.filter(function (k) { return ph[k] === true || ph[k] === 1; }).length;
-    stats.physics_total = phKeys.length;
-    stats.physics_done = phDone;
-  } catch (e) { stats.physics_total = 0; stats.physics_done = 0; }
-
-  try {
-    var ig = JSON.parse(localStorage.getItem('integrals_progress') || '{}');
-    var igKeys = Object.keys(ig);
-    var igDone = igKeys.filter(function (k) { return ig[k] === true || ig[k] === 1; }).length;
-    stats.integrals_total = igKeys.length;
-    stats.integrals_done = igDone;
-  } catch (e) { stats.integrals_total = 0; stats.integrals_done = 0; }
-
-  try {
-    var kr = JSON.parse(localStorage.getItem('kr_progress') || '{}');
-    var krKeys = Object.keys(kr);
-    var krDone = krKeys.filter(function (k) { return kr[k] === true || kr[k] === 1; }).length;
-    stats.kr_total = krKeys.length;
-    stats.kr_done = krDone;
-  } catch (e) { stats.kr_total = 0; stats.kr_done = 0; }
-
-  return stats;
+  const count = (key, valid) => { const values = readStoredJSON(key, {}); return [...valid].filter(k => values[k] === true || values[k] === 1).length; };
+  const taskKeys = groups => new Set(Array.from({length:groups.reduce((n,g)=>n+g.tasks.length,0)},(_,i)=>String(i+1)));
+  const practice = typeof examTasksData === 'undefined' ? new Set() : taskKeys(examTasksData);
+  const control = typeof typeConfig === 'undefined' ? new Set() : taskKeys(typeConfig);
+  const physics = new Set();
+  if (typeof PHYSICS_NTK_DATA !== 'undefined') PHYSICS_NTK_DATA.forEach(s=>s.problems.forEach((_,i)=>physics.add(`${s.id}_${i}`)));
+  const integrals = new Set();
+  if (typeof INTEGRALS_DATA !== 'undefined') Object.entries(INTEGRALS_DATA).forEach(([s,tasks])=>tasks.forEach((_,i)=>integrals.add(`s${s.replace('section','')}_t${i}`)));
+  const done = key => readStoredJSON(key, []).filter(t=>t && t.step>=5).length;
+  const probability = readStoredJSON('probability_progress_v1', {});
+  return {
+    tickets_total: (typeof ticketsData === 'undefined' ? 0 : ticketsData.length) + (typeof SEMESTER1_DATA === 'undefined' ? 0 : SEMESTER1_DATA.length),
+    tickets_done: done('exam_manager_v9') + done('semester1_progress'),
+    probability_total: typeof PROBABILITY_DATA === 'undefined' ? 0 : PROBABILITY_DATA.tickets.length,
+    probability_done: Object.values(probability.tickets || {}).filter(t=>t?.step>=5).length,
+    tasks_total:practice.size,tasks_done:count('exam_tasks_progress',practice),
+    kr_total:control.size,kr_done:count('kr_progress',control),
+    physics_total:physics.size,physics_done:count('physics_progress',physics),
+    integrals_total:integrals.size,integrals_done:count('integrals_progress',integrals)
+  };
 }
 
-/* ── Profile overlay ──────────────────────────────── */
-function openProfile() {
+async function openProfile() {
+  if (!authUser) return;
+  const uid = authUser.uid;
+  try { await Promise.all(['semester1','probability','examTasks','controlWork','physics','integrals'].map(k=>window.DataLoader.load(k))); } catch (error) { console.error(error); alert('Не удалось загрузить статистику. Попробуйте позже.'); return; }
+  if (authUser?.uid !== uid) return;
   closeAuthDropdown();
   if (!authUser) return;
 
@@ -587,7 +566,7 @@ function openProfile() {
   if (p.avatar) {
     avatarSection =
       '<div class="profile-avatar-wrap">' +
-        '<img class="profile-avatar-img" src="' + p.avatar + '" alt="Аватар">' +
+        '<img class="profile-avatar-img" src="' + escapeHTML(p.avatar) + '" alt="Аватар">' +
         '<label class="profile-avatar-edit" title="Изменить аватар">&#128247;' +
           '<input type="file" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">' +
         '</label>' +
@@ -596,7 +575,7 @@ function openProfile() {
   } else {
     avatarSection =
       '<div class="profile-avatar-wrap">' +
-        '<div class="profile-avatar-placeholder" style="background:' + color + '">' + initial + '</div>' +
+        '<div class="profile-avatar-placeholder" style="background:' + color + '">' + escapeHTML(initial) + '</div>' +
         '<label class="profile-avatar-edit" title="Загрузить аватар">&#128247;' +
           '<input type="file" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">' +
         '</label>' +
@@ -609,14 +588,15 @@ function openProfile() {
       '<h2>Профиль</h2>' +
       '<div class="profile-avatar-section">' +
         avatarSection +
-        '<div class="profile-email">' + email + '</div>' +
+        '<div class="profile-email">' + escapeHTML(email) + '</div>' +
       '</div>' +
       '<div class="profile-field">' +
         '<label for="profile-group">Группа</label>' +
-        '<input type="text" id="profile-group" placeholder="Например: БИ-2401" value="' + (p.group || '').replace(/"/g, '&quot;') + '">' +
+        '<input type="text" id="profile-group" placeholder="Например: БИ-2401" value="' + escapeHTML(p.group || '') + '">' +
       '</div>' +
       '<div class="profile-section-title">Прогресс</div>' +
       '<div class="profile-stats">' +
+        _statCard(s.probability_done, s.probability_total, '\u0422\u0435\u043e\u0440\u0438\u044f \u0432\u0435\u0440\u043e\u044f\u0442\u043d\u043e\u0441\u0442\u0435\u0439') +
         _statCard(s.tickets_done, s.tickets_total, 'Билеты АГиТДУ') +
         _statCard(s.tasks_done, s.tasks_total, 'Задачи экзамена') +
         _statCard(s.kr_done, s.kr_total, 'Контрольная работа') +
@@ -627,6 +607,7 @@ function openProfile() {
       '<div style="font-size:0.75rem; color:var(--pencil); padding:8px 0;">' +
         'Раздел «Вклад» будет доступен после добавления загрузки конспектов.' +
       '</div>' +
+      '<button class="profile-btn-cancel" onclick="importGuestProgress()">\u041f\u0435\u0440\u0435\u043d\u0435\u0441\u0442\u0438 \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441 \u0433\u043e\u0441\u0442\u044f</button>' +
       '<div class="profile-save-row">' +
         '<button class="profile-btn-cancel" onclick="closeProfile()">Закрыть</button>' +
         '<button class="profile-btn-save" onclick="saveProfile()">Сохранить</button>' +

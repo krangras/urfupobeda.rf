@@ -6,6 +6,12 @@ __pycache__/
 *.pyo
 *.zip
 node_modules/
+tools/output/
+.codex/
+.agents/
+.aws/
+.venv/
+venv/
 temp.js
 README.md
 docs/

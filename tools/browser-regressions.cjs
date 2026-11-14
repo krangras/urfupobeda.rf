@@ -1,0 +1,61 @@
+module.exports = async ({evaluate:e,call,waitFor,delay,assert,errors}) => {
+  await e("Promise.all(Object.keys(DataLoader.SOURCES).map(k=>DataLoader.load(k)))");
+  await e(`localStorage.setItem('semester1_progress',JSON.stringify(SEMESTER1_DATA.map((t,id)=>({id,name:t.title,step:id===0?3:0,nextReview:null,history:[]}))));saveToStorage('exam_matrix_answers',JSON.stringify({1:{'0_0':'7',rank:'2',sign:'-1'}}))`);
+  const backup=await e('buildFullBackup()');
+  assert.equal(backup.semester1[0].step,3,'Unopened semester1 export');
+  assert.equal(backup.examMatrixAnswers[1]['0_0'],'7','Matrix export');
+  assert.equal(await e(`(async()=>{const before=JSON.stringify({...localStorage});try{await applyBackup({...buildFullBackup(),tickets:state.map(t=>({...t,step:2})),semester1:{length:24}})}catch{}return before===JSON.stringify({...localStorage})})()`),true,'Invalid import must leave storage unchanged');
+  await e(`applyBackup({...buildFullBackup(),physics:{kinematika_0:true},examTasks:{1:true},integrals:{s1_t0:true}})`);
+  assert.deepEqual(await e('({p:physicsProgress.kinematika_0,t:examTasksProgress[1],i:integralsProgress.s1_t0,m:examMatrixAnswers[1]["0_0"]})'),{p:true,t:true,i:true,m:'7'});
+  const stats=await e('_getProgressStats()');
+  assert.equal(stats.physics_total,235);assert.equal(stats.physics_done,1);
+  assert.equal(stats.tasks_total,58);assert.equal(stats.tasks_done,1);
+  assert.equal(stats.tickets_total,51);assert.equal(stats.probability_total,18);
+  console.log('PASS: full backup, rejected import atomicity, model reload and profile totals');
+
+  await e("document.querySelector('[data-tab=physics-ntk]').click()");
+  await waitFor("document.querySelector('#physics-ntk-kinematika-list .task-card')",'physics cards');
+  const payload='\"><img src=x onerror="window.auditXss=1">';
+  const injection=await e(`(()=>{const s=PHYSICS_NTK_DATA.find(s=>s.id==='kinematika');const i=s.problems.findIndex(p=>!p.options?.length);const v=${JSON.stringify(payload)};const input=document.getElementById('phys_input_'+s.id+'_'+i);input.value=v;physicsAnswers[s.id+'_'+i+'_txt']=v;saveToStorage('physics_answers',JSON.stringify(physicsAnswers));renderPhysicsNtk(s.id);return{id:input.id}})()`);
+  await delay(100);
+  assert.equal(await e('window.auditXss===1'),false,'Stored answer cannot execute HTML');
+  assert.equal(await e(`document.getElementById(${JSON.stringify(injection.id)}).value`),payload,'Answer stays literal');
+  await e('auditTimers.filter(t=>t.ms===60000).forEach(t=>t.fn())');
+  assert.equal(await e("['1/0','3abc','1/2/3','2+2','1e309'].every(s=>Number.isNaN(parseUserNumber(s)))"),true);
+  assert.deepEqual(await e("['1/2','-2,5','1e-3'].map(parseUserNumber)"),[0.5,-2.5,0.001]);
+  await e("document.querySelector('#physics-ntk-pane [data-subtab=elektrostatika]').click()");
+  assert.equal(await e("localStorage.getItem('active_subtab')"),'elektrostatika');
+  console.log('PASS: stored-answer escaping, numeric parsing, physics timer and subtab persistence');
+
+  await e('initSemester1State()');
+  const undo=await e(`(()=>{const history=[1,2,3,4,5,6].map(n=>new Date(2026,0,n).getTime());state[0]={...state[0],step:5,history,nextReview:1};const old=JSON.stringify(state[0]);advanceTicket(0);const global=!!lastAction;undoForTicket(0);const exact=JSON.stringify(state[0])===old;semester1State[0]={...semester1State[0],step:5,history,nextReview:1};advanceSemester1Ticket(0);semester1LastAction=null;undoSemester1Ticket(0);return{global,exact,mastered:semester1State[0].step===5,history:semester1State[0].history.length}})()`);
+  assert.deepEqual(undo,{global:true,exact:true,mastered:true,history:6});
+  await e("switchToSemester1Subtab('math');renderSemester1Math()");
+  await waitFor("document.querySelector('#semester1-math-content .stats-grid-value')",'integral stats');
+  await e("toggleSemester1Integral('s1_t0',false)");
+  assert.equal(await e("document.querySelector('#semester1-math-content .stats-grid-value').textContent.trim()"),'0');
+  await e("toggleSemester1Integral('s1_t0',true)");
+  assert.equal(await e("document.querySelector('#semester1-math-content .stats-grid-value').textContent.trim()"),'1');
+  await e("switchToSemester1Subtab('agidu')");
+  assert.equal(await e("localStorage.getItem('active_tab')"),'semester1');
+  await call('Page.reload');
+  await waitFor("document.readyState==='complete' && document.querySelector('#semester1-agidu.active-sub-pane') && document.querySelector('#semester1-agidu-list .ticket')",'restored semester1');
+  assert.equal(await e("document.querySelector('.tab-btn.active')?.dataset.uxTab"),'semester1');
+  assert.ok((await e('document.title')).includes('урфупобеда.рф'));
+  assert.equal(await e("[...document.querySelectorAll('.tab-btn')].every(b=>b.tagName==='BUTTON')"),true);
+  console.log('PASS: monthly review undo, integral stats, restored route, keyboard buttons and branding');
+
+  await e("Promise.all(Object.keys(DataLoader.SOURCES).map(k=>DataLoader.load(k)))");
+  const math=await e(`(()=>{const results=[];let scanned=0;const slash=String.fromCharCode(92);const walk=(v,p)=>{if(typeof v==='string'&&(v.includes('$')||v.includes(slash+'(')||v.includes(slash+'['))){scanned++;const d=document.createElement('div');d.innerHTML=fixNeq(v);renderMathInElement(d,{delimiters:[{left:'$$',right:'$$',display:true},{left:slash+'[',right:slash+']',display:true},{left:'$',right:'$',display:false},{left:slash+'(',right:slash+')',display:false}],throwOnError:false,strict:false,macros:{[slash+'tg']:slash+'operatorname{tg}',[slash+'ctg']:slash+'operatorname{ctg}',[slash+'arctg']:slash+'operatorname{arctg}'}});d.querySelectorAll('.katex-error').forEach(e=>results.push(p+': '+e.title))}else if(v&&typeof v==='object')Object.entries(v).forEach(([k,x])=>walk(x,p+'.'+k))};walk({CONSPECTS,SEMESTER1_DATA,PHYSICS_NTK_DATA,PHYSICS_THEORY,INTEGRALS_DATA,examTasksData,typeConfig,PROBABILITY_DATA},'data');return{scanned,errors:results}})()`);
+  assert.ok(math.scanned>=748);assert.deepEqual(math.errors,[]);
+  assert.equal(await e("CONSPECTS[17].includes(String.fromCharCode(92)+'equiv')"),true);
+  assert.equal(await e("fetch('assets/img/elektrostatika/18.svg').then(r=>r.ok)"),true);
+  console.log('PASS:',math.scanned,'math strings rendered; restored electrostatics figure');
+
+  await e("localStorage.setItem('kr_progress','{broken');localStorage.setItem('physics_answers','null');localStorage.setItem('exam_manager_v9','{}')");
+  await call('Page.reload');
+  await waitFor("document.readyState==='complete' && typeof buildFullBackup==='function' && state.length===27",'corrupt storage recovery');
+  assert.equal(await e("localStorage.getItem('urfupobeda:recovery:kr_progress')"),'{broken');
+  assert.deepEqual(errors,[],'Unhandled browser exceptions');
+  console.log('PASS: corrupt storage recovery; no unhandled browser exceptions');
+};

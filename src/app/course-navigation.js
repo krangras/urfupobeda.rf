@@ -17,9 +17,11 @@
     { id: 'control', title: 'АГиТДУ · 2 семестр · контрольная работа', subtitle: 'Линейные дифференциальные уравнения', count: 'Архив', source: 'controlWork' },
     { id: 'physics', title: 'Физика · НТК', subtitle: 'Механика, МКТ и электричество', count: '9', source: 'physics' },
     { id: 'integrals', title: 'Математика · 1 семестр · интегралы', subtitle: 'Интегральное исчисление', count: '9', source: 'integrals' },
-    { id: 'discrete', title: 'Дискретная математика · 1 семестр', subtitle: 'Материалы курса', count: 'Скоро' }
+    { id: 'discrete', title: 'Дискретная математика · 1 семестр', subtitle: 'Материалы курса', count: 'Скоро' },
+    { id: 'probability', title: 'Теория вероятностей · подготовка к экзамену', subtitle: '3 семестр · билеты к экзамену', count: '18', source: 'probability' }
   ];
   let nav, input, empty, yearDetails;
+  let years = [];
   let query = '';
   let searching = false;
   let savedBeforeSearch;
@@ -127,6 +129,12 @@
           titles.forEach((title, index) => {
             if (INTEGRALS_DATA[`section${index + 1}`]) content.append(link(course, title, index + 1));
           });
+        } else if (course.id === 'probability') {
+          PROBABILITY_DATA.tickets.forEach(ticket => {
+            const item = link(course, `${ticket.id}. ${ticket.title}`, `tickets:${ticket.id}`, 'course-ticket');
+            item.dataset.probTicket = ticket.id;
+            content.append(item);
+          });
         } else if (course.id === 'control') {
           typeConfig.forEach((type, index) => content.append(link(course, type.title, index)));
         } else {
@@ -149,7 +157,11 @@
 
   async function navigate(course, target) {
     if (course.source) await window.DataLoader.load(course.source);
-    if (course.id === 'semester2') {
+    if (course.id === 'probability') {
+      const [view, id] = String(target || 'tickets').split(':');
+      await window.ProbabilityCourse.open(view, id);
+      if (id) return;
+    } else if (course.id === 'semester2') {
       document.querySelector('[data-tab="exam"]').click();
       await frames();
       document.querySelector('#list [data-filter="all"]')?.click();
@@ -197,6 +209,7 @@
   }
 
   function activeCourse() {
+    if (document.getElementById('probability-pane').classList.contains('active-pane')) return 'probability';
     if (document.getElementById('exam-pane').classList.contains('active-pane')) return 'semester2';
     if (document.getElementById('exam-tasks-pane').classList.contains('active-pane')) return 'practice';
     if (document.getElementById('physics-ntk-pane').classList.contains('active-pane')) return 'physics';
@@ -219,6 +232,11 @@
         const progress = course.id === 'semester2' ? state : course.id === 'semester1' ? semester1State : null;
         course.body.querySelectorAll('[data-ticket]').forEach(button => {
           const step = progress?.[Number(button.dataset.ticket)]?.step || 0;
+          button.classList.toggle('course-mastered', step >= 5);
+          button.classList.toggle('course-learning', step > 0 && step < 5);
+        });
+        course.body.querySelectorAll('[data-prob-ticket]').forEach(button => {
+          const step = window.ProbabilityCourse?.ticketStep(button.dataset.probTicket) || 0;
           button.classList.toggle('course-mastered', step >= 5);
           button.classList.toggle('course-learning', step > 0 && step < 5);
         });
@@ -254,7 +272,10 @@
       else if (savedBeforeSearch) course.details.open = Boolean(savedBeforeSearch.get(course.details));
       if (!course.details.hidden) found++;
     });
-    if (yearDetails) yearDetails.open = query ? true : (savedBeforeSearch?.get(yearDetails) ?? true);
+    years.forEach(year => {
+      year.hidden = Boolean(query && ![...year.querySelectorAll('.course')].some(course => !course.hidden));
+      year.open = query ? !year.hidden : (savedBeforeSearch?.get(year) ?? year.open);
+    });
     empty.hidden = found > 0;
     if (!query) savedBeforeSearch = null;
   }
@@ -285,6 +306,10 @@
     yearDetails = year.details;
     yearDetails.open = openState['year-1'] !== false;
     nav.append(yearDetails);
+    const secondYear = disclosure('2 курс', 'year-2', 'course-year');
+    secondYear.details.open = openState['year-2'] !== false;
+    nav.append(secondYear.details);
+    years = [yearDetails, secondYear.details];
     const tools = el('div', 'ux-sidebar-tools');
     const label = el('label', 'ux-sidebar-search');
     label.htmlFor = 'sidebar-search';
@@ -318,7 +343,7 @@
       count.setAttribute('aria-hidden', 'true');
       summary.append(heading, count);
       body.append(link(course, course.id === 'discrete' ? 'О разделе' : 'Открыть курс', '', 'course-overview'));
-      year.body.append(details);
+      (course.id === 'probability' ? secondYear.body : year.body).append(details);
       details.addEventListener('toggle', () => { if (details.open) loadCourse(course); });
       if (details.open) loadCourse(course);
     });

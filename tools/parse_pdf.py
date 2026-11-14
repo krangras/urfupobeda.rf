@@ -252,7 +252,7 @@ def extract_formula_images(page_image, regions, output_dir, page_num):
 # PAGE ANALYSIS
 # ══════════════════════════════════════════════════════════════
 
-def analyze_page(page_image, page_num, ocr_lang, output_dir):
+def analyze_page(page_image, page_num, ocr_lang, output_dir, detect_formulas=True):
     """Full analysis of one page: OCR + formula detection + layout."""
     result = {
         "page": page_num + 1,
@@ -272,7 +272,7 @@ def analyze_page(page_image, page_num, ocr_lang, output_dir):
         result["text"] = text
 
     # Formula detection
-    regions = detect_formula_regions(page_image)
+    regions = detect_formula_regions(page_image) if detect_formulas and HAS_PIL else []
     if regions:
         formulas = extract_formula_images(
             page_image, regions, output_dir, page_num
@@ -610,18 +610,13 @@ Examples:
         print(f"  Analyzing page {page['index']+1}...", end=" ")
         result = analyze_page(
             page["image"], page["index"],
-            ocr_lang, images_dir
+            ocr_lang, images_dir, detect_formulas=not args.no_formulas
         )
 
         if not args.no_formulas and HAS_PIL:
-            regions = detect_formula_regions(page["image"])
-            if regions:
-                formulas = extract_formula_images(
-                    page["image"], regions, images_dir, page["index"]
-                )
-                result["formulas"] = formulas
+            if result["formulas"]:
                 print(f"OCR: {len(result['text'])} chars, "
-                      f"Formulas: {len(formulas)}", end="")
+                      f"Formulas: {len(result['formulas'])}", end="")
             else:
                 print(f"OCR: {len(result['text'])} chars, Formulas: 0", end="")
         else:

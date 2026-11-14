@@ -417,6 +417,7 @@
 [data-theme="dark"] #exam-pane,
 [data-theme="dark"] #exam-tasks-pane,
 [data-theme="dark"] #physics-ntk-pane,
+[data-theme="dark"] #probability-pane,
 [data-theme="dark"] .archive-pane,
 [data-theme="dark"] .sub-tab-pane {
     border-color: var(--ring);
@@ -1117,7 +1118,7 @@ body {
 }
 
 /* Страница-тетрадь */
-#exam-pane, #archive-pane, #exam-tasks-pane, #physics-ntk-pane {
+#exam-pane, #archive-pane, #exam-tasks-pane, #physics-ntk-pane, #probability-pane {
     background: var(--paper);
     border: 2px solid #9a8a6a;
     border-radius: 0 12px 12px 12px;
@@ -1134,6 +1135,7 @@ body {
 #exam-pane,
 #exam-tasks-pane,
 #physics-ntk-pane,
+#probability-pane,
 .archive-pane,
 .sub-tab-pane {
     background-image:
@@ -1155,6 +1157,7 @@ body {
 #exam-pane > *,
 #exam-tasks-pane > *,
 #physics-ntk-pane > *,
+#probability-pane > *,
 .sub-tab-pane > *,
 .archive-pane > * {
     position: relative;

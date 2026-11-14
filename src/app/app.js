@@ -56,6 +56,7 @@ const modules = [
     { title: 'Дифференциальные уравнения', tickets: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26] }
 ];
 
+let restoringProgress = false;
 let state = null;
 let semester1State = null;
 let lastAction = null;
@@ -121,14 +122,14 @@ function migrateOldTickets(oldTickets) {
 
 function isOldTicketsData(data) {
     if (!Array.isArray(data) || data.length !== 19) return false;
-    return data.some((t, i) => t.name && t.name.startsWith(OLD_TICKET_NAMES[i].slice(0, 20)));
+    return data.some((t, i) => typeof t?.name === 'string' && t.name.startsWith(OLD_TICKET_NAMES[i].slice(0, 20)));
 }
 
 const REORDER_MAP = [5,6,7,8,9,10,11,0,1,2,3,4,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26];
 
 function isOldOrderState(data) {
     if (!Array.isArray(data) || data.length !== 27) return false;
-    return data[0] && data[0].name && data[0].name.startsWith("Критерий линейности оператора");
+    return data[0] && typeof data[0].name === 'string' && data[0].name.startsWith("Критерий линейности оператора");
 }
 
 function migrateReorder(data) {
@@ -150,20 +151,21 @@ function migrateReorder(data) {
 function initState() {
     const saved = localStorage.getItem('exam_manager_v9');
     if (saved) {
-        const parsed = JSON.parse(saved);
+        const parsed = readStoredJSON('exam_manager_v9', []);
         if (isOldTicketsData(parsed)) {
             state = migrateOldTickets(parsed);
         } else if (isOldOrderState(parsed)) {
             state = migrateReorder(parsed);
         } else {
             state = ticketsData.map((item, idx) => {
-                const existing = parsed?.find(p => p.id === idx);
+                const existing = parsed?.find(p => p?.id === idx);
                 return existing ? { ...existing, name: item.t } : { id: idx, name: item.t, step: 0, nextReview: null, history: [] };
             });
         }
     } else {
         state = ticketsData.map((item, idx) => ({ id: idx, name: item.t, step: 0, nextReview: null, history: [] }));
     }
+    state = normalizeTicketProgress(state, ticketsData.map(t => t.t));
     saveToLocalStorage();
     renderSidebar();
     renderPracticeSidebar();
@@ -175,14 +177,15 @@ async function initSemester1State() {
     }
     const saved = localStorage.getItem('semester1_progress');
     if (saved) {
-        const parsed = JSON.parse(saved);
+        const parsed = readStoredJSON('semester1_progress', []);
         semester1State = SEMESTER1_DATA.map((item, idx) => {
-            const existing = parsed?.find(p => p.id === idx);
+            const existing = parsed?.find(p => p?.id === idx);
             return existing ? { ...existing, name: item.title } : { id: idx, name: item.title, step: 0, nextReview: null, history: [] };
         });
     } else {
         semester1State = SEMESTER1_DATA.map((item, idx) => ({ id: idx, name: item.title, step: 0, nextReview: null, history: [] }));
     }
+    semester1State = normalizeTicketProgress(semester1State, SEMESTER1_DATA.map(t => t.title));
     saveSemester1State();
 }
 
@@ -231,7 +234,7 @@ function renderSidebar() {
     if (fill) fill.style.width = pct + '%';
     if (text) text.textContent = Math.round(pct) + '%';
     let html = '';
-    const modulesState = JSON.parse(localStorage.getItem('sidebar_modules_state') || '{}');
+    const modulesState = readStoredJSON('sidebar_modules_state', {});
     modules.forEach((mod, mi) => {
         const isOpen = modulesState[mi] !== false;
         const chevron = isOpen ? '▼' : '▶';
@@ -328,7 +331,7 @@ window.clearSidebarSearch = clearSidebarSearch;
 
 function toggleModule(mi, e) {
     if (e) e.stopPropagation();
-    const modulesState = JSON.parse(localStorage.getItem('sidebar_modules_state') || '{}');
+    const modulesState = readStoredJSON('sidebar_modules_state', {});
     modulesState[mi] = modulesState[mi] === false ? true : false;
     localStorage.setItem('sidebar_modules_state', JSON.stringify(modulesState));
     renderSidebar();
@@ -344,7 +347,7 @@ function renderPracticeSidebar() {
         return;
     }
     let html = '';
-    const state = JSON.parse(localStorage.getItem('practice_modules_state') || '{}');
+    const state = readStoredJSON('practice_modules_state', {});
     let taskId = 1;
     for (let t = 0; t < examTasksData.length; t++) {
         const type = examTasksData[t];
@@ -378,7 +381,7 @@ function renderPracticeSidebar() {
 
 function togglePracticeType(typeIdx) {
     clearTimeout(sidebarCollapseTimer);
-    const state = JSON.parse(localStorage.getItem('practice_modules_state') || '{}');
+    const state = readStoredJSON('practice_modules_state', {});
     state[typeIdx] = state[typeIdx] === false ? true : false;
     localStorage.setItem('practice_modules_state', JSON.stringify(state));
     renderPracticeSidebar();
@@ -535,6 +538,8 @@ function switchToExamTasks() {
 }
 
 function switchToSemester1Subtab(subtab) {
+    localStorage.setItem('active_tab', 'semester1');
+    localStorage.setItem('semester1_subtab', subtab);
     closeMobileSidebarAfterNavigation();
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active-pane'));
@@ -695,99 +700,24 @@ function scheduleRender(id) {
 }
 
 function advanceTicket(id) {
-    const item = state[id];
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    const today = now.getTime();
-
-    if (!item.history) item.history = [];
-    
-    // Добавляем сегодня в историю ТОЛЬКО если сегодня ещё не повторяли этот билет
-    const lastRepeat = item.history[item.history.length - 1];
-    if (!lastRepeat || new Date(lastRepeat).toDateString() !== now.toDateString()) {
-        item.history.push(today);
-    }
-
-    // Определяем следующий шаг и дату
-    if (item.step >= intervals.length) {
-        const next = new Date(now);
-        next.setDate(now.getDate() + intervals[intervals.length - 1]);
-        item.nextReview = next.getTime();
-        saveToLocalStorage();
-        scheduleRender(id);
-        return;
-    }
-
-    const next = new Date(now);
-    next.setDate(now.getDate() + intervals[item.step]);
-    lastAction = { id, type: 'advance', oldStep: item.step };
-    item.step++;
-    item.nextReview = next.getTime();
-    saveToLocalStorage();
-    scheduleRender(id);
+    const previous = state[id], next = advanceSpacedReview(previous, intervals);
+    if (next === previous) return;
+    lastAction = { id, previous: structuredClone(previous) };
+    state[id] = next; saveToLocalStorage(); scheduleRender(id);
 }
 
 function advanceSemester1Ticket(id) {
-    const item = semester1State[id];
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    const today = now.getTime();
-
-    if (!item.history) item.history = [];
-
-    const lastRepeat = item.history[item.history.length - 1];
-    if (!lastRepeat || new Date(lastRepeat).toDateString() !== now.toDateString()) {
-        item.history.push(today);
-    }
-
-    if (item.step >= semester1Intervals.length) {
-        const next = new Date(now);
-        next.setDate(now.getDate() + semester1Intervals[semester1Intervals.length - 1]);
-        item.nextReview = next.getTime();
-        saveSemester1State();
-        scheduleSemester1Render(id);
-        return;
-    }
-
-    const next = new Date(now);
-    next.setDate(now.getDate() + semester1Intervals[item.step]);
-    semester1LastAction = { id, type: 'advance', oldStep: item.step };
-    item.step++;
-    item.nextReview = next.getTime();
-    saveSemester1State();
-    scheduleSemester1Render(id);
+    const previous = semester1State[id], next = advanceSpacedReview(previous, semester1Intervals);
+    if (next === previous) return;
+    semester1LastAction = { id, previous: structuredClone(previous) };
+    semester1State[id] = next; saveSemester1State(); scheduleSemester1Render(id);
 }
 
 function undoSemester1Ticket(id) {
-    const item = semester1State[id];
-    if (item.step <= 0) return;
-
-    if (item.history && item.history.length > 0) {
-        item.history.pop();
-    }
-
-    item.step--;
-
-    if (item.step === 0) {
-        item.nextReview = null;
-    } else {
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-
-        if (item.history && item.history.length > 0) {
-            const lastDate = new Date(item.history[item.history.length - 1]);
-            lastDate.setHours(0, 0, 0, 0);
-
-            const next = new Date(lastDate);
-            next.setDate(lastDate.getDate() + semester1Intervals[item.step - 1]);
-            item.nextReview = next.getTime();
-        } else {
-            const next = new Date(now);
-            next.setDate(now.getDate() + semester1Intervals[item.step - 1]);
-            item.nextReview = next.getTime();
-        }
-    }
-
-    saveSemester1State();
-    scheduleSemester1Render(id);
+    if (!semester1State[id]?.step) return;
+    semester1State[id] = semester1LastAction?.id === id ? semester1LastAction.previous : undoSpacedReview(semester1State[id], semester1Intervals);
+    semester1LastAction = null;
+    saveSemester1State(); scheduleSemester1Render(id);
 }
 
 function undoLastSemester1Action() {
@@ -882,46 +812,10 @@ function scheduleSemester1Render(id) {
 }
 
 function undoForTicket(id) {
-    const item = state[id];
-    if (item.step <= 0) return;
-    
-    // Удаляем последнюю запись из истории
-    if (item.history && item.history.length > 0) {
-        item.history.pop();
-    }
-    
-    // Уменьшаем шаг
-    item.step--;
-    
-    // Восстанавливаем предыдущую дату повторения
-    if (item.step === 0) {
-        // Если шаг стал 0 — билет не изучен
-        item.nextReview = null;
-    } else {
-        // Иначе считаем дату исходя из предыдущего шага
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        
-        // Берём последнюю успешную дату из истории (которая осталась после pop)
-        if (item.history && item.history.length > 0) {
-            // Если есть история — возвращаемся на день последнего повторения
-            const lastDate = new Date(item.history[item.history.length - 1]);
-            lastDate.setHours(0, 0, 0, 0);
-            
-            // Следующее повторение = последнее успешное + интервал для текущего шага
-            const next = new Date(lastDate);
-            next.setDate(lastDate.getDate() + intervals[item.step - 1]);
-            item.nextReview = next.getTime();
-        } else {
-            // Если истории нет — считаем от сегодня
-            const next = new Date(now);
-            next.setDate(now.getDate() + intervals[item.step - 1]);
-            item.nextReview = next.getTime();
-        }
-    }
-    
-    saveToLocalStorage();
-    scheduleRender(id);
+    if (!state[id]?.step) return;
+    state[id] = lastAction?.id === id ? lastAction.previous : undoSpacedReview(state[id], intervals);
+    lastAction = null;
+    saveToLocalStorage(); scheduleRender(id);
 }
 
 function undoLastAction() {
@@ -1004,7 +898,7 @@ function render() {
         }
     });
     // Добавляем ранее сохранённые открытые билеты из localStorage
-    const savedOpen = JSON.parse(localStorage.getItem('tickets_open_state')) || [];
+    const savedOpen = readStoredJSON('tickets_open_state', []);
     savedOpen.forEach(idx => {
         if (!openTicketsData.has(idx)) {
             openTicketsData.set(idx, '');
@@ -1155,7 +1049,7 @@ function updatePace() {
     const daysLeft = diff / 86400000;
     
     const timerEl = document.getElementById('timer');
-    if (timerEl) timerEl.innerHTML = daysLeft > 0 ? `⏳ До экзамена: ${daysLeft.toFixed(3)} дн.` : "🔥 Экзамен!";
+    if (timerEl) timerEl.textContent = examDateMessage(examDate);
 
     const notStarted = state.filter(s => s.step === 0).length;
     const learning = state.filter(s => s.step > 0 && s.step < intervals.length).length;
@@ -1177,7 +1071,7 @@ function updatePace() {
         paceText += ` | 📌 ${daysPerTicket.toFixed(3)} дня на 1 билет`;
     } else if (notStarted === 0 && learning === 0) {
         paceText += ` | 🏆 ВСЁ ГОТОВО! Только повторяй.`;
-    } else if (notStarted === 0) {
+    } else if (notStarted === 0 && daysLeft > 0) {
         paceText += ` | ⏰ До экзамена ${daysLeft.toFixed(1)} дн., только повторение`;
     }
     
@@ -1187,37 +1081,13 @@ function updatePace() {
 
 // ========== ПОЛНОЕ СОХРАНЕНИЕ/ЗАГРУЗКА (ВСЁ В ОДНОМ ФАЙЛЕ) ==========
 function exportAllToFile() {
-    const fullData = {
-        version: '3.0',
-        date: new Date().toISOString(),
-        tickets: state.map(({ id, name, step, nextReview, history }) => ({
-            id, name, step, nextReview, history
-        })),
-        integrals: integralsProgress || {},
-        kr: krProgress || {},
-        examTasks: examTasksProgress || {},
+    const fullData = buildFullBackup();
 
-        physics: physicsProgress || {},
-        physicsAnswers: physicsAnswers || {},
-        semester1: semester1State ? semester1State.map(({ id, name, step, nextReview, history }) => ({
-            id, name, step, nextReview, history
-        })) : [],
-        integralsSectionsState: (() => {
-            const state = {};
-            for (let i = 1; i <= 9; i++) {
-                const content = document.getElementById(`section-${i}-content`);
-                if (content) state[i] = content.style.display !== 'none';
-            }
-            return state;
-        })(),
-        activeTab: document.querySelector('.tab-btn.active')?.getAttribute('data-tab') || 'exam'
-    };
-    
     const dataStr = JSON.stringify(fullData, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `marvin_full_backup_${new Date().toISOString().slice(0,19)}.json`;
+    a.download = `urfupobeda_backup_${new Date().toISOString().slice(0,19).replace(/:/g, "-")}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
     alert("✅ ВСЕ данные сохранены в файл!");
@@ -1231,142 +1101,10 @@ function importAllFromFile() {
         const reader = new FileReader();
         reader.onload = async (ev) => {
             try {
+                if (String(ev.target.result).length > 10000000) throw new Error('File too large');
                 const data = JSON.parse(ev.target.result);
-                
-                if (data.version !== '3.0' && (!data.tickets || !data.integrals || !data.kr)) {
-                    alert("❌ Неверный формат файла");
-                    return;
-                }
+                await applyBackup(data);
 
-                if (typeof DataLoader !== 'undefined') {
-                    await Promise.all([
-                        window.DataLoader.load('integrals'),
-                        window.DataLoader.load('physics'),
-                        window.DataLoader.load('semester1'),
-                        window.DataLoader.load('examTasks'),
-                        window.DataLoader.load('controlWork')
-                    ]).catch((err) => console.error(err));
-                }
-                
-                if (data.tickets && data.tickets.length === state.length) {
-                    state = data.tickets.map((t, idx) => ({
-                        ...t,
-                        name: t.name || ticketsData[idx].t
-                    }));
-                    saveToLocalStorage();
-                } else if (data.tickets && isOldTicketsData(data.tickets)) {
-                    if (confirm("Обнаружен прогресс от старой версии (19 билетов). Перенести его на новую структуру (27 билетов)?")) {
-                        state = migrateOldTickets(data.tickets);
-                        saveToLocalStorage();
-                    }
-                }
-                
-                if (data.integrals) {
-                    integralsProgress = {};
-                    const validKeys = new Set();
-                    for (let i = 1; i <= 9; i++) {
-                        const section = INTEGRALS_DATA[`section${i}`];
-                        if (section) {
-                            for (let j = 0; j < section.length; j++) {
-                                validKeys.add(`s${i}_t${j}`);
-                            }
-                        }
-                    }
-                    for (const key of Object.keys(data.integrals)) {
-                        if (validKeys.has(key)) {
-                            integralsProgress[key] = data.integrals[key];
-                        }
-                    }
-                    saveIntegralsProgress();
-                }
-                
-                if (data.kr) {
-                    krProgress = {};
-                    let maxKrId = 0;
-                    for (const type of typeConfig) {
-                        maxKrId += type.tasks.length;
-                    }
-                    for (const key of Object.keys(data.kr)) {
-                        const id = parseInt(key, 10);
-                        if (!isNaN(id) && id >= 1 && id <= maxKrId) {
-                            krProgress[id] = data.kr[id];
-                        }
-                    }
-                    saveKrProgress();
-                }
-                
-                if (data.semester1 && data.semester1.length === semester1State.length) {
-                    semester1State = data.semester1.map((t, idx) => ({
-                        ...t,
-                        name: t.name || SEMESTER1_DATA[idx].title
-                    }));
-                    saveSemester1State();
-                }
-                
-                if (data.physics) {
-                    physicsProgress = {};
-                    for (const section of PHYSICS_NTK_DATA) {
-                        for (let i = 0; i < section.problems.length; i++) {
-                            const key = `${section.id}_${i}`;
-                            if (data.physics[key]) physicsProgress[key] = data.physics[key];
-                        }
-                    }
-                    savePhysicsProgress();
-                }
-                if (data.physicsAnswers) {
-                    physicsAnswers = {};
-                    for (const key of Object.keys(data.physicsAnswers)) {
-                        physicsAnswers[key] = data.physicsAnswers[key];
-                    }
-                    savePhysicsAnswers();
-                }
-
-                if (data.examTasks) {
-                    examTasksProgress = {};
-                    let maxExamId = 0;
-                    for (const type of examTasksData) {
-                        maxExamId += type.tasks.length;
-                    }
-                    for (const key of Object.keys(data.examTasks)) {
-                        const id = parseInt(key, 10);
-                        if (!isNaN(id) && id >= 1 && id <= maxExamId) {
-                            examTasksProgress[id] = data.examTasks[id];
-                        }
-                    }
-                    saveExamProgress();
-                }
-                
-                render();
-                if (typeof invalidateIntegralsCache === 'function') invalidateIntegralsCache();
-                else if (typeof renderIntegrals === 'function') renderIntegrals();
-                if (typeof renderControlTasks === 'function') renderControlTasks();
-                if (typeof renderSemester1AGiTDU === 'function') renderSemester1AGiTDU();
-                if (typeof renderExamTasks === 'function') renderExamTasks();
-                if (typeof renderPhysicsNtk === 'function') renderPhysicsNtk();
-                
-                setTimeout(() => {
-                    if (data.integralsSectionsState) {
-                        for (let i = 1; i <= 9; i++) {
-                            const content = document.getElementById(`section-${i}-content`);
-                            const toggleBtn = document.getElementById(`toggle-section-${i}`);
-                            if (content && data.integralsSectionsState[i] !== undefined) {
-                                if (data.integralsSectionsState[i]) {
-                                    content.style.display = 'block';
-                                    if (toggleBtn) toggleBtn.innerHTML = '▼';
-                                } else {
-                                    content.style.display = 'none';
-                                    if (toggleBtn) toggleBtn.innerHTML = '▶';
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (data.activeTab) {
-                        const tabBtn = document.querySelector(`.tab-btn[data-tab="${data.activeTab}"]`);
-                        if (tabBtn) tabBtn.click();
-                    }
-                }, 200);
-                
                 alert(`✅ Данные загружены!\n📅 от ${data.date || 'неизвестная дата'}`);
                 
             } catch(err) {
@@ -1382,85 +1120,8 @@ function importAllFromFile() {
 window.exportAllToFile = exportAllToFile;
 window.importAllFromFile = importAllFromFile;
 // ========== СОХРАНЕНИЕ/ЗАГРУЗКА ФАЙЛА ==========
-function saveProgressToFile() {
-    const ticketsProgress = state.map(({ id, step, nextReview, history }) => ({
-        id, step, nextReview, history
-    }));
-    
-    const integralsProgressData = integralsProgress || {};
-    
-    const fullProgress = {
-        tickets: ticketsProgress,
-        integrals: integralsProgressData,
-        version: '2.0',
-        date: new Date().toISOString()
-    };
-    
-    const dataStr = JSON.stringify(fullProgress, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `marvin_progress_${new Date().toISOString().slice(0,19)}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    alert("✅ Прогресс сохранён!");
-}
-
-function loadProgressFromFile() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "application/json";
-    input.onchange = (e) => {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            try {
-                const loaded = JSON.parse(ev.target.result);
-                
-                // Проверяем новую версию (с интегралами)
-                if (loaded.tickets && loaded.integrals) {
-                    // Загружаем прогресс билетов
-                    if (loaded.tickets.length === state.length) {
-                        state = loaded.tickets;
-                        saveToLocalStorage();
-                    }
-                    
-                    // Загружаем прогресс интегралов
-                    if (loaded.integrals) {
-                        integralsProgress = loaded.integrals;
-                        saveIntegralsProgress();
-                        // Обновляем отображение интегралов, если вкладка открыта
-                        const archivePane = document.getElementById('archive-pane');
-                        if (archivePane && archivePane.classList.contains('active-pane')) {
-                            invalidateIntegralsCache();
-                        } else {
-                            // Сбрасываем кеш, чтобы при следующем открытии пересчиталось
-                            integralsHTMLCache = null;
-                            integralsRendered = false;
-                        }
-                    }
-                    
-                    render();
-                    alert("✅ Прогресс загружен!");
-                }
-                // Старая версия (только билеты)
-                else if (loaded && loaded.length === state.length) {
-                    state = loaded;
-                    saveToLocalStorage();
-                    render();
-                    alert("✅ Прогресс билетов загружен! (прогресс интегралов не изменился)");
-                } 
-                else {
-                    alert("❌ Неверный формат файла");
-                }
-            } catch(err) { 
-                console.error(err);
-                alert("❌ Ошибка загрузки файла"); 
-            }
-        };
-        reader.readAsText(e.target.files[0]);
-    };
-    input.click();
-}
+function saveProgressToFile() { exportAllToFile(); }
+function loadProgressFromFile() { importAllFromFile(); }
 function resetAllIntegralsProgress() {
     if (confirm("Сбросить весь прогресс интегралов?")) {
         integralsProgress = {};
@@ -1526,7 +1187,7 @@ function fmtNum(n) {
 
 // ========== КОНТРОЛЬНАЯ РАБОТА ==========
 // ========== КОНТРОЛЬНАЯ РАБОТА ==========
-let krProgress = JSON.parse(localStorage.getItem('kr_progress')) || {};
+let krProgress = readStoredJSON('kr_progress', {});
 
 function getKrSolvedCount() {
     let count = 0;
@@ -1701,14 +1362,14 @@ function updateKrStats() {
 
 function saveSolutionState(type, key, isOpen) {
     const storageKey = type === 'kr' ? 'ui_kr_solutions' : type === 'exam' ? 'ui_exam_solutions' : 'ui_integral_solutions';
-    const state = JSON.parse(localStorage.getItem(storageKey)) || {};
+    const state = readStoredJSON(storageKey, {});
     state[key] = isOpen;
     localStorage.setItem(storageKey, JSON.stringify(state));
 }
 
 function restoreSolutionStates(type) {
     const storageKey = type === 'kr' ? 'ui_kr_solutions' : type === 'exam' ? 'ui_exam_solutions' : 'ui_integral_solutions';
-    const state = JSON.parse(localStorage.getItem(storageKey)) || {};
+    const state = readStoredJSON(storageKey, {});
     const container = type === 'kr' ? document.getElementById('control-tasks') : type === 'exam' ? document.getElementById('exam-tasks-content') : document.getElementById('integrals-list');
     if (!container) return;
     Object.keys(state).forEach(key => {
@@ -1790,7 +1451,7 @@ async function renderControlTasks() {
     
 
     // Состояние секций
-    const krSectionsState = JSON.parse(localStorage.getItem('kr_sections_state')) || {};
+    const krSectionsState = readStoredJSON('kr_sections_state', {});
     const anySectionExpanded = typeConfig.some((_, t) => krSectionsState[t] !== false);
     
     let html = `
@@ -1889,10 +1550,10 @@ async function renderControlTasks() {
 
 // ========== ЭКЗАМЕНАЦИОННЫЕ ЗАДАЧИ ==========
 
-let examTasksProgress = JSON.parse(localStorage.getItem('exam_tasks_progress')) || {};
+let examTasksProgress = readStoredJSON('exam_tasks_progress', {});
 
-let physicsProgress = JSON.parse(localStorage.getItem('physics_progress')) || {};
-let physicsAnswers = JSON.parse(localStorage.getItem('physics_answers')) || {};
+let physicsProgress = readStoredJSON('physics_progress', {});
+let physicsAnswers = readStoredJSON('physics_answers', {});
 
 function savePhysicsProgress() {
     saveToStorage('physics_progress', JSON.stringify(physicsProgress));
@@ -1906,6 +1567,7 @@ function saveVisiblePhysicsInputs(sectionId) {
     const prefix = 'physics-ntk-' + sectionId;
     const container = document.getElementById(prefix + '-list');
     if (!container) return;
+    if (restoringProgress) return;
     const inputs = container.querySelectorAll('.phys-answer-input');
     for (let i = 0; i < inputs.length; i++) {
         const input = inputs[i];
@@ -1970,16 +1632,16 @@ function setPhysicsSolvedIfCorrect(sectionId, problemIdx) {
             physicsProgress[key] = true;
         }
     } else if (problem.correctIndices) {
-        const selected = (physicsAnswers[`${key}_opt`] || '').split(',').map(Number).filter(n => !isNaN(n));
+        const selected = String(physicsAnswers[`${key}_opt`] ?? '').split(',').map(Number).filter(n => !isNaN(n));
         const allCorrect = problem.correctIndices.length === selected.length && problem.correctIndices.every(c => selected.includes(c));
         if (allCorrect) physicsProgress[key] = true;
     } else if (problem.answer) {
-        const userAnswer = (physicsAnswers[`${key}_txt`] || '').trim().toLowerCase().replace(/,/g, '.');
+        const userAnswer = String(physicsAnswers[`${key}_txt`] ?? '').trim().toLowerCase().replace(/,/g, '.');
         const correctAnswer = problem.answer.trim().toLowerCase().replace(/,/g, '.');
         let isCorrect = false;
         if (problem.answerType === 'number') {
-            const uNum = parseFloat(userAnswer);
-            const cNum = parseFloat(correctAnswer);
+            const uNum = parseFiniteNumber(userAnswer);
+            const cNum = parseFiniteNumber(correctAnswer);
             isCorrect = !isNaN(uNum) && !isNaN(cNum) && Math.abs(uNum - cNum) < 0.01;
         } else if (problem.answerType === 'formula') {
             isCorrect = normalizeFormula(userAnswer) === normalizeFormula(correctAnswer);
@@ -2138,7 +1800,7 @@ function updatePhysicsSectionStats(sectionId) {
 
 function togglePhysicsOption(sectionId, problemIdx, optIdx) {
     const key = `${sectionId}_${problemIdx}_opt`;
-    let selectedStr = physicsAnswers[key] || '';
+    let selectedStr = String(physicsAnswers[key] ?? '');
     let selected = selectedStr ? selectedStr.split(',').map(Number) : [];
     const pos = selected.indexOf(optIdx);
     if (pos >= 0) {
@@ -2165,7 +1827,7 @@ function checkPhysicsMultiSelect(sectionId, problemIdx) {
         physicsAnswers[solKey] = '1';
         const problem = getPhysicsProblem(sectionId, problemIdx);
         if (problem && problem.correctIndices) {
-            const selected = (physicsAnswers[optKey] || '').split(',').map(Number).filter(n => !isNaN(n));
+            const selected = String(physicsAnswers[optKey] ?? '').split(',').map(Number).filter(n => !isNaN(n));
             const allCorrect = problem.correctIndices.length === selected.length && problem.correctIndices.every(c => selected.includes(c));
             if (allCorrect) {
                 physicsProgress[key] = true;
@@ -2235,7 +1897,7 @@ function resetExamProgress() {
         examTasksProgress = {};
         examMatrixAnswers = {};
         examMatrixFeedback = {};
-        localStorage.setItem('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
+        saveToStorage('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
         saveExamProgress();
         renderExamTasks();
         alert("✅ Прогресс экзаменационных задач сброшен!");
@@ -2310,7 +1972,7 @@ function renderVectorInput(taskId, answer) {
         html += `<table class="vector-formula-table">`;
         for (let j = 0; j < dim; j++) {
             const val = (examMatrixAnswers && examMatrixAnswers[taskId] && examMatrixAnswers[taskId][`v${i}_${j}`]) || '';
-            html += `<tr><td><input type="text" class="matrix-cell-input vector-cell-small" id="vcell_${taskId}_${i}_${j}" value="${val}" onchange="saveExamVectorCell(${taskId}, ${i}, ${j}, this.value)"></td></tr>`;
+            html += `<tr><td><input type="text" class="matrix-cell-input vector-cell-small" id="vcell_${taskId}_${i}_${j}" value="${escapeHTML(val)}" onchange="saveExamVectorCell(${taskId}, ${i}, ${j}, this.value)"></td></tr>`;
         }
         html += `</table>`;
         html += `<span class="vector-formula-bracket">)</span>`;
@@ -2335,7 +1997,7 @@ function renderVectorInput(taskId, answer) {
 function saveExamVectorCell(taskId, i, j, val) {
     if (!examMatrixAnswers[taskId]) examMatrixAnswers[taskId] = {};
     examMatrixAnswers[taskId][`v${i}_${j}`] = val;
-    localStorage.setItem('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
+    saveToStorage('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
 }
 
 function gaussRank(matrix) {
@@ -2475,8 +2137,8 @@ function renderRankDefectInput(taskId, answer) {
     let html = `<div class="matrix-input-block" id="rankdef_block_${taskId}">`;
     html += `<div class="matrix-input-label"><strong>${label}</strong></div>`;
     html += `<div class="rankdef-row">`;
-    html += `<div class="rankdef-field"><span class="rankdef-var">$r$</span> = <input type="text" class="matrix-cell-input rankdef-input" id="rval_${taskId}" value="${rVal}" onchange="saveExamRankDefect(${taskId}, 'rank', this.value)"></div>`;
-    html += `<div class="rankdef-field"><span class="rankdef-var">$d$</span> = <input type="text" class="matrix-cell-input rankdef-input" id="dval_${taskId}" value="${dVal}" onchange="saveExamRankDefect(${taskId}, 'defect', this.value)"></div>`;
+    html += `<div class="rankdef-field"><span class="rankdef-var">$r$</span> = <input type="text" class="matrix-cell-input rankdef-input" id="rval_${taskId}" value="${escapeHTML(rVal)}" onchange="saveExamRankDefect(${taskId}, 'rank', this.value)"></div>`;
+    html += `<div class="rankdef-field"><span class="rankdef-var">$d$</span> = <input type="text" class="matrix-cell-input rankdef-input" id="dval_${taskId}" value="${escapeHTML(dVal)}" onchange="saveExamRankDefect(${taskId}, 'defect', this.value)"></div>`;
     html += `</div>`;
     html += `<div class="matrix-check-row">`;
     html += `<button class="matrix-check-btn" onclick="checkExamRankDefectAnswer(${taskId})">Проверить</button>`;
@@ -2491,7 +2153,7 @@ function renderRankDefectInput(taskId, answer) {
 function saveExamRankDefect(taskId, field, val) {
     if (!examMatrixAnswers[taskId]) examMatrixAnswers[taskId] = {};
     examMatrixAnswers[taskId][field] = val;
-    localStorage.setItem('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
+    saveToStorage('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
 }
 
 function checkExamRankDefectAnswer(taskId) {
@@ -2524,7 +2186,7 @@ function renderSignInput(taskId, answer) {
     const val = (examMatrixAnswers && examMatrixAnswers[taskId] && examMatrixAnswers[taskId]['sign']) || '';
     let html = `<div class="matrix-input-block" id="sign_block_${taskId}">`;
     html += `<div class="matrix-input-label"><strong>${label}</strong></div>`;
-    html += `<input type="text" class="matrix-cell-input" id="signval_${taskId}" value="${val}" onchange="saveExamSignAnswer(${taskId}, this.value)" placeholder="например: знакопеременная" style="width:280px;">`;
+    html += `<input type="text" class="matrix-cell-input" id="signval_${taskId}" value="${escapeHTML(val)}" onchange="saveExamSignAnswer(${taskId}, this.value)" placeholder="например: знакопеременная" style="width:280px;">`;
     html += `<div class="matrix-check-row">`;
     html += `<button class="matrix-check-btn" onclick="checkExamSignAnswer(${taskId})">Проверить</button>`;
     const fb = (examMatrixFeedback && examMatrixFeedback[taskId]) || '';
@@ -2538,7 +2200,7 @@ function renderSignInput(taskId, answer) {
 function saveExamSignAnswer(taskId, val) {
     if (!examMatrixAnswers[taskId]) examMatrixAnswers[taskId] = {};
     examMatrixAnswers[taskId]['sign'] = val;
-    localStorage.setItem('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
+    saveToStorage('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
 }
 
 function checkExamSignAnswer(taskId) {
@@ -2583,7 +2245,7 @@ function renderMatrixInput(taskId, answer) {
         html += `<tr>`;
         for (let j = 0; j < n; j++) {
             const val = (examMatrixAnswers && examMatrixAnswers[taskId] && examMatrixAnswers[taskId][`${i}_${j}`]) || '';
-            html += `<td><input type="text" class="matrix-cell-input" id="mcell_${taskId}_${i}_${j}" value="${val}" onchange="saveExamMatrixCell(${taskId}, ${i}, ${j}, this.value)"></td>`;
+            html += `<td><input type="text" class="matrix-cell-input" id="mcell_${taskId}_${i}_${j}" value="${escapeHTML(val)}" onchange="saveExamMatrixCell(${taskId}, ${i}, ${j}, this.value)"></td>`;
         }
         html += `</tr>`;
     }
@@ -2605,33 +2267,22 @@ function renderMatrixInput(taskId, answer) {
     return html;
 }
 
-let examMatrixAnswers = JSON.parse(localStorage.getItem('exam_matrix_answers')) || {};
+let examMatrixAnswers = readStoredJSON('exam_matrix_answers', {});
 let examMatrixFeedback = {};
 
 function saveExamMatrixCell(taskId, i, j, val) {
     if (!examMatrixAnswers[taskId]) examMatrixAnswers[taskId] = {};
     examMatrixAnswers[taskId][`${i}_${j}`] = val;
-    localStorage.setItem('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
+    saveToStorage('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
 }
 
 function saveExamMatrixDet(taskId, val) {
     if (!examMatrixAnswers[taskId]) examMatrixAnswers[taskId] = {};
     examMatrixAnswers[taskId]['det'] = val;
-    localStorage.setItem('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
+    saveToStorage('exam_matrix_answers', JSON.stringify(examMatrixAnswers));
 }
 
-function parseUserNumber(str) {
-    str = str.replace(',', '.').trim();
-    if (str.includes('/')) {
-        const parts = str.split('/');
-        if (parts.length === 2) {
-            const a = parseFloat(parts[0]);
-            const b = parseFloat(parts[1]);
-            if (!isNaN(a) && !isNaN(b) && b !== 0) return a / b;
-        }
-    }
-    return parseFloat(str);
-}
+function parseUserNumber(str) { return parseFiniteNumber(str); }
 
 function checkExamMatrixAnswer(taskId) {
     const task = findExamTask(taskId);
@@ -2934,7 +2585,7 @@ async function initTabs() {
             } else if (btn.dataset.tab === 'exam-tasks') {
                 document.getElementById('exam-tasks-pane')?.classList.add('active-pane');
                 saveActiveTab();
-                requestAnimationFrame(() => renderExamTasks());
+                await renderExamTasks();
             } else if (btn.dataset.tab === 'physics-ntk') {
                 document.getElementById('physics-ntk-pane')?.classList.add('active-pane');
                 saveActiveTab();
@@ -2943,6 +2594,8 @@ async function initTabs() {
                     const savedScroll = localStorage.getItem('physics_ntk_scroll');
                     if (savedScroll) window.scrollTo(0, parseInt(savedScroll, 10));
                 });
+            } else if (btn.dataset.tab === 'probability') {
+                await window.ProbabilityCourse?.open();
             }
         });
     });
@@ -2971,35 +2624,19 @@ function initArchiveSubTabs() {
 
 function initSemester1SubTabs() {
     document.querySelectorAll('#semester1-pane .sub-tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('#semester1-pane .sub-tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            document.querySelectorAll('#semester1-pane .sub-tab-pane').forEach(p => p.classList.remove('active-sub-pane'));
-
-            if (btn.dataset.subtab === 'agidu') {
-                document.getElementById('semester1-agidu')?.classList.add('active-sub-pane');
-                saveActiveSubTab();
-                requestAnimationFrame(() => renderSemester1AGiTDU());
-            } else if (btn.dataset.subtab === 'math') {
-                document.getElementById('semester1-math')?.classList.add('active-sub-pane');
-                saveActiveSubTab();
-                requestAnimationFrame(() => renderSemester1Math());
-            } else if (btn.dataset.subtab === 'discrete') {
-                document.getElementById('semester1-discrete')?.classList.add('active-sub-pane');
-                saveActiveSubTab();
-            }
-        });
+        btn.addEventListener('click', () => switchToSemester1Subtab(btn.dataset.subtab));
     });
 }
 function initPhysicsNtkSubTabs() {
     document.querySelectorAll('#physics-ntk-pane .sub-tab-btn').forEach(btn => {
+        if (btn.dataset.physicsBound) return;
+        btn.dataset.physicsBound = '1';
         btn.addEventListener('click', () => {
-            saveActiveSubTab();
             localStorage.setItem('physics_ntk_scroll', window.scrollY);
 
             document.querySelectorAll('#physics-ntk-pane .sub-tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            saveActiveSubTab();
 
             document.querySelectorAll('#physics-ntk-pane .sub-tab-pane').forEach(p => p.classList.remove('active-sub-pane'));
 
@@ -3072,27 +2709,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => {
         if (document.getElementById('physics-ntk-pane')?.classList.contains('active-pane')) {
     renderPhysicsNtkStats();
-    if (savedScrollY) {
-        requestAnimationFrame(() => window.scrollTo(0, savedScrollY));
-    }
 }
     }, 60000);
 
     // Тяжёлые модули подгружаем в фоне после первого рендера
     // Тяжёлые учебные данные загружаются только при открытии соответствующего курса.
 
-    if (typeof onReinit === 'function') {
-        onReinit(() => {
-            initState();
-            initSemester1State();
-            renderControlTasks();
-            renderExamTasks();
-            initPhysicsNtkSubTabs();
-            loadActiveTab();
-            render();
-            updatePace();
-        });
-    }
+    if (typeof onReinit === 'function') onReinit(refreshStoredModels);
 });
 
 // ========== РЕНДЕР СЕМЕСТРА 1 — АГиТДУ ==========
@@ -3451,7 +3074,7 @@ async function renderSemester1Math() {
         if (!sectionData) continue;
 
         const sectionKey = `section-${i}`;
-        const sectionsState = JSON.parse(localStorage.getItem('integrals_sections_state')) || {};
+        const sectionsState = readStoredJSON('integrals_sections_state', {});
         const isExpanded = sectionsState[i] !== false;
 
         html += `<div class="section-card" style="margin: 1rem;">
@@ -3517,7 +3140,7 @@ function toggleSemester1Section(num) {
     const isOpen = content.style.display !== 'none';
     content.style.display = isOpen ? 'none' : 'block';
     if (chevron) chevron.textContent = isOpen ? '▶' : '▼';
-    const sectionsState = JSON.parse(localStorage.getItem('integrals_sections_state')) || {};
+    const sectionsState = readStoredJSON('integrals_sections_state', {});
     sectionsState[num] = !isOpen;
     localStorage.setItem('integrals_sections_state', JSON.stringify(sectionsState));
 }
@@ -3528,6 +3151,7 @@ function toggleSemester1Integral(key, checked) {
     // update visual state
     const card = document.getElementById(`chk_sem1_${key}`)?.closest('.integral-card');
     if (card) card.classList.toggle('completed', checked);
+    refreshSemester1IntegralStats();
     // update section stat
     const sectionNum = parseInt(key.split('_')[0].slice(1), 10);
     const sectionData = INTEGRALS_DATA[`section${sectionNum}`];
@@ -3543,7 +3167,7 @@ function toggleSemester1Integral(key, checked) {
 // ========== ТАБЛИЦА ИНТЕГРАЛОВ ==========
 
 // ========== ТАБЛИЦА ИНТЕГРАЛОВ С ЧЕКБОКСАМИ, СВОРАЧИВАНИЕМ И ПРОГРЕССОМ ==========// ========== ПРОГРЕСС ИНТЕГРАЛОВ ==========
-let integralsProgress = JSON.parse(localStorage.getItem('integrals_progress')) || {};
+let integralsProgress = readStoredJSON('integrals_progress', {});
 
 // ========== КЕШИРОВАНИЕ ИНТЕГРАЛОВ ==========
 let integralsHTMLCache = null;
@@ -3581,13 +3205,21 @@ function getTotalTasksCount() {
 function saveActiveTab() {
     const activeTab = document.querySelector('.tab-btn.active');
     if (activeTab) {
-        localStorage.setItem('active_tab', activeTab.getAttribute('data-tab'));
+        localStorage.setItem('active_tab', activeTab.dataset.uxTab || activeTab.dataset.tab);
     }
 }
 
-function loadActiveTab() {
+async function loadActiveTab() {
     const savedTab = localStorage.getItem('active_tab');
-    const tabToShow = (savedTab === 'exam' || savedTab === 'exam-tasks' || savedTab === 'physics-ntk') ? savedTab : 'exam';
+    if (savedTab === 'semester1') {
+        const subtab = localStorage.getItem('semester1_subtab') || 'agidu';
+        switchToSemester1Subtab(subtab);
+        if (subtab === 'math') await renderSemester1Math();
+        else if (subtab === 'agidu') await renderSemester1AGiTDU();
+        window.CourseNavigation?.refresh();
+        return;
+    }
+    const tabToShow = ['exam', 'exam-tasks', 'physics-ntk', 'probability'].includes(savedTab) ? savedTab : 'exam';
     const tabBtn = document.querySelector(`.tab-btn[data-tab="${tabToShow}"]`);
     if (tabBtn) {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -3598,9 +3230,11 @@ function loadActiveTab() {
         if (tabToShow === 'exam') {
             document.getElementById('exam-pane')?.classList.add('active-pane');
             render();
+        } else if (tabToShow === 'probability') {
+            await window.ProbabilityCourse?.open();
         } else if (tabToShow === 'exam-tasks') {
             document.getElementById('exam-tasks-pane')?.classList.add('active-pane');
-            requestAnimationFrame(() => renderExamTasks());
+            await renderExamTasks();
         } else if (tabToShow === 'physics-ntk') {
             document.getElementById('physics-ntk-pane')?.classList.add('active-pane');
             const savedSubTab = localStorage.getItem('active_subtab');
@@ -3614,14 +3248,14 @@ function loadActiveTab() {
                     if (pane) pane.classList.add('active-sub-pane');
                 }
             }
-            requestAnimationFrame(() => {
-                renderPhysicsNtkStats();
-                renderPhysicsNtk();
+            {
+                await renderPhysicsNtkStats();
+                await renderPhysicsNtk();
                 const savedScroll = localStorage.getItem('physics_ntk_scroll');
                 if (savedScroll) {
                     window.scrollTo(0, parseInt(savedScroll, 10));
                 }
-            });
+            }
         }
     }
 }
@@ -3743,7 +3377,7 @@ async function renderPhysicsNtk(subtabId, onlyProblemIdx) {
             const showSol = physicsAnswers[solKey] === '1';
             if (problem.options && problem.options.length > 0) {
                 if (isMulti) {
-                    const selectedStr = physicsAnswers[optKey] || '';
+                    const selectedStr = String(physicsAnswers[optKey] ?? '');
                     const selectedSet = selectedStr ? selectedStr.split(',').map(Number) : [];
                     html += '<div class="phys-options">';
                     problem.options.forEach((opt, oi) => {
@@ -3766,7 +3400,7 @@ async function renderPhysicsNtk(subtabId, onlyProblemIdx) {
                     if (wasChecked) {
                         const total = problem.correctIndices.length;
                         let correctCount = 0;
-                        const selectedStr2 = physicsAnswers[optKey] || '';
+                        const selectedStr2 = String(physicsAnswers[optKey] ?? '');
                         const selectedSet2 = selectedStr2 ? selectedStr2.split(',').map(Number) : [];
                         for (const s of selectedSet2) {
                             if (problem.correctIndices.includes(s)) correctCount++;
@@ -3800,16 +3434,16 @@ async function renderPhysicsNtk(subtabId, onlyProblemIdx) {
                 }
             } else {
                 html += `<div class="phys-answer-row">`;
-                html += `<input type="text" class="phys-answer-input" id="phys_input_${key}" placeholder="Введи ответ..." value="${physicsAnswers[`${key}_txt`] || ''}" onchange="savePhysicsTypedAnswer('${section.id}', ${idx}, this.value)">`;
+                html += `<input type="text" class="phys-answer-input" id="phys_input_${key}" placeholder="Введи ответ..." value="${escapeHTML(String(physicsAnswers[`${key}_txt`] ?? ''))}" onchange="savePhysicsTypedAnswer('${section.id}', ${idx}, this.value)">`;
                 if (problem.answer) {
                     html += `<button class="phys-check-btn" onclick="checkPhysicsAnswer('${section.id}', ${idx})">${wasChecked ? '🔄' : 'Проверить'}</button>`;
                     if (wasChecked) {
-                        const userAnswer = (physicsAnswers[`${key}_txt`] || '').trim().toLowerCase().replace(/,/g, '.');
+                        const userAnswer = String(physicsAnswers[`${key}_txt`] ?? '').trim().toLowerCase().replace(/,/g, '.');
                         const correctAnswer = problem.answer.trim().toLowerCase().replace(/,/g, '.');
                         let isCorrect = false;
                         if (problem.answerType === 'number') {
-                            const uNum = parseFloat(userAnswer);
-                            const cNum = parseFloat(correctAnswer);
+                            const uNum = parseFiniteNumber(userAnswer);
+                            const cNum = parseFiniteNumber(correctAnswer);
                             isCorrect = !isNaN(uNum) && !isNaN(cNum) && Math.abs(uNum - cNum) < 0.01;
                         } else if (problem.answerType === 'formula') {
                             isCorrect = normalizeFormula(userAnswer) === normalizeFormula(correctAnswer);
@@ -3938,7 +3572,7 @@ async function initPhysicsTheoryButtons() {
 }
 
 function saveActiveSubTab() {
-    const active = document.querySelector('.sub-tab-btn.active');
+    const active = document.querySelector('#physics-ntk-pane .sub-tab-btn.active');
     if (active) {
         localStorage.setItem('active_subtab', active.getAttribute('data-subtab'));
     }
@@ -3957,7 +3591,7 @@ function saveIntegralsSectionState() {
 
 function loadIntegralsSectionState() {
     const saved = localStorage.getItem('integrals_sections_state');
-    const sectionsState = saved ? JSON.parse(saved) : {};
+    const sectionsState = readStoredJSON('integrals_sections_state', {});
     
     if (saved) {
         for (let i = 1; i <= 9; i++) {
@@ -4175,7 +3809,7 @@ async function renderIntegrals() {
     let totalTasks = getTotalTasksCount();
     let solved = getSolvedCount();
     
-    const integralsSectionsState = JSON.parse(localStorage.getItem('integrals_sections_state')) || {};
+    const integralsSectionsState = readStoredJSON('integrals_sections_state', {});
     const integralsAnyExpanded = Object.values(integralsSectionsState).some(v => v === true);
     
     let html = `
@@ -4608,13 +4242,13 @@ function updateTabTitle() {
     
     // 3. ОБНОВЛЕНИЕ ЗАГОЛОВКА ВКЛАДКИ
     if (reviewCount === 0) {
-        // Когда нечего повторять — строго marvin.io
-        document.title = "marvin.io";
+        // Текущий бренд и количество билетов к повторению.
+        document.title = 'урфупобеда.рф · Подготовка к экзаменам';
     } else {
         // Когда есть задачи к повтору — выводим номера билетов
         const nums = toReview.map(item => item.id + 1).join(', ');
         const label = reviewCount === 1 ? 'Билет к повтору' : 'Билеты к повтору';
-        document.title = `${label}: ${nums} | marvin.io`;
+        document.title = `${label}: ${nums} | урфупобеда.рф`;
     }
 }
 // Добавляем стили

@@ -4,7 +4,7 @@
 (function () {
     'use strict';
 
-    var BUILD = window.BUILD_VERSION || '1';
+    var BUILD = window.BUILD_VERSION || '6';
 
     var SOURCES = {
         conspects: 'src/data/conspects.js',
@@ -12,7 +12,8 @@
         examTasks: 'src/data/exam_tasks.js',
         physics: 'src/data/physics_ntk_data.js',
         semester1: 'src/data/semester1_data.js',
-        integrals: 'src/data/integrals_data.js'
+        integrals: 'src/data/integrals_data.js',
+        probability: 'src/data/probability_data.js'
     };
 
     var registry = Object.create(null);
@@ -25,6 +26,7 @@
             case 'physics':    return typeof PHYSICS_NTK_DATA !== 'undefined' && typeof PHYSICS_THEORY !== 'undefined';
             case 'semester1':  return typeof SEMESTER1_DATA !== 'undefined';
             case 'integrals':  return typeof INTEGRALS_DATA !== 'undefined';
+            case 'probability': return typeof PROBABILITY_DATA !== 'undefined';
             default:           return true;
         }
     }

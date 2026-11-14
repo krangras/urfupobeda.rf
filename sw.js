@@ -1,14 +1,22 @@
-const CACHE = 'urfupobeda-notebook-v9';
+const CACHE = 'urfupobeda-notebook-v25';
 const SHELL = [
   './',
   './index.html',
   './assets/css/style.css',
   './assets/css/ux-overrides.css',
+  './assets/css/probability.css',
   './assets/img/logo.svg',
+  './assets/img/urfupobeda-logo.svg',
+  './assets/img/urfupobeda-logo-dark.svg',
   './src/app/data-loader.js',
+  './src/app/storage.js',
+  './src/app/backups.js',
   './src/app/app.js',
   './src/app/ux-enhancements.js',
   './src/app/course-navigation.js',
+  './src/app/probability.js',
+  './src/app/ticket-copy.js',
+  './src/data/probability_data.js',
   './src/auth/firebase-init.js',
   './src/auth/firebase-auth.js',
   './src/auth/firebase-sync.js'
@@ -36,7 +44,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(fetch(event.request).then((response) => {
       if (response && response.ok) caches.open(CACHE).then((cache) => cache.put(event.request, response.clone())).catch(() => {});
       return response;
-    }).catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html'))));
+    }).catch(async () => {
+      const cached = await caches.match(event.request) || await caches.match(event.request, { ignoreSearch: true });
+      if (cached) return cached;
+      if (isNavigation) return await caches.match('./index.html') || Response.error();
+      return new Response('/* Resource unavailable offline */', { status: 503, headers: { 'Content-Type': url.pathname.endsWith('.css') ? 'text/css' : 'application/javascript' } });
+    }));
     return;
   }
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {

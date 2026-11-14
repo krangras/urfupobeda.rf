@@ -11,27 +11,40 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://www.gstatic.com">
     <link rel="preconnect" href="https://firebasestorage.googleapis.com">
-    <link rel="stylesheet" href="assets/css/style.css?v=27">
-<link rel="stylesheet" href="assets/css/ux-overrides.css?v=10">
+    <link rel="stylesheet" href="assets/css/style.css?v=28">
+<link rel="stylesheet" href="assets/css/ux-overrides.css?v=19">
+    <link rel="stylesheet" href="assets/css/probability.css?v=4">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script>try{if('serviceWorker'in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('./sw.js?v=9').catch(()=>{})}}catch(e){}</script>
+    <script>try{if('serviceWorker'in navigator&&location.protocol!=='file:'){navigator.serviceWorker.register('./sw.js?v=25').catch(()=>{})}}catch(e){}</script>
 </head>
 <body>
 <div class="container">
     <div class="header-buttons">
         <div class="theme-btn" onclick="toggleTheme()" id="theme-btn" title="Переключить тему"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></div>
     </div>
+    <div class="hero-stamp" role="img" aria-label="Гаджетники запрещены">
+        <svg class="hero-stamp-icon" viewBox="0 0 48 48" aria-hidden="true">
+            <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="3"/>
+            <g fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="19" cy="17" r="4"/><path d="M11.5 34v-4.5a7.5 7.5 0 0 1 12-6"/>
+                <rect x="26" y="18" width="9" height="15" rx="1.8"/><path d="M29.5 29.5h2"/>
+            </g>
+            <path d="M10 10l28 28" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+        </svg>
+        <span>Гаджетники<br>запрещены</span>
+    </div>
     <div class="hero">
-        <div class="hero-row">
-            <img src="assets/img/logo.svg" alt="урфупобеда.рф" class="hero-logo" draggable="false">
-            <img src="assets/img/agitdu/no_phone2.png" alt="Не на телефоне!" class="hero-warn" draggable="false">
+        <div class="hero-brand">
+            <img class="hero-brand-art logo-light" src="assets/img/urfupobeda-logo.svg" width="1170" height="825" alt="" aria-hidden="true" draggable="false">
+            <img class="hero-brand-art logo-dark" src="assets/img/urfupobeda-logo-dark.svg" width="1170" height="825" alt="" aria-hidden="true" draggable="false">
+            <div class="hero-wordmark" aria-label="урфупобеда.рф"><span>урфу</span><strong>победа</strong><span class="hero-domain">.рф</span></div>
         </div>
-        <div class="hero-subtitle">Подготовка к экзаменам</div>
+        <div class="hero-subtitle">Билеты, задачи и конспекты</div>
     </div>
 
 <aside class="sidebar" id="sidebar">
@@ -60,9 +73,10 @@
 <div class="main-layout">
     <div class="main-content">
             <div class="tabs">
-                <div class="tab-btn active" data-tab="exam">Экзамен</div>
-                <div class="tab-btn" data-tab="exam-tasks">Практика</div>
-                <div class="tab-btn" data-tab="physics-ntk">Физика</div>
+                <button type="button" class="tab-btn" data-tab="probability">Теория вероятностей · 3 семестр · теория</button>
+                <button type="button" class="tab-btn active" data-tab="exam">АГиТДУ · 2 семестр · теория</button>
+                <button type="button" class="tab-btn" data-tab="exam-tasks">АГиТДУ · 2 семестр · практика</button>
+                <button type="button" class="tab-btn" data-tab="physics-ntk">Физика · НТК</button>
             </div>
 
             <div id="exam-pane" class="tab-pane active-pane">
@@ -129,11 +143,6 @@
             </div>
 
             <div id="semester1-pane" class="tab-pane">
-                <div class="sub-tabs">
-                    <div class="sub-tab-btn active" data-subtab="agidu">📐 АГиТДУ</div>
-                    <div class="sub-tab-btn" data-subtab="math">📐 Математика</div>
-                    <div class="sub-tab-btn" data-subtab="discrete">💻 Дискретная математика</div>
-                </div>
                 <div id="semester1-agidu" class="sub-tab-pane active-sub-pane">
                     <div id="semester1-agidu-list"></div>
                 </div>
@@ -152,6 +161,8 @@
             <div id="exam-tasks-pane" class="tab-pane">
                 <div id="exam-tasks-content"></div>
             </div>
+
+            <div id="probability-pane" class="tab-pane" aria-label="Теория вероятностей"></div>
 
             <div id="physics-ntk-pane" class="tab-pane">
                 <div id="physics-ntk-stats"></div>
@@ -199,12 +210,16 @@
     </div>
 </div>
 
+<script src="src/app/storage.js?v=1"></script>
 <script src="src/auth/firebase-init.js?v=1"></script>
-<script src="src/auth/firebase-auth.js?v=2"></script>
-<script src="src/auth/firebase-sync.js?v=2"></script>
-<script src="src/app/data-loader.js?v=1"></script>
-<script src="src/app/app.js?v=49"></script>
-    <script src="src/app/ux-enhancements.js?v=9"></script>
-<script src="src/app/course-navigation.js?v=2"></script>
+<script src="src/auth/firebase-auth.js?v=3"></script>
+<script src="src/auth/firebase-sync.js?v=4"></script>
+<script src="src/app/data-loader.js?v=7"></script>
+<script src="src/app/app.js?v=51"></script>
+<script src="src/app/backups.js?v=1"></script>
+<script src="src/app/probability.js?v=7"></script>
+<script src="src/app/ticket-copy.js?v=1"></script>
+    <script src="src/app/ux-enhancements.js?v=15"></script>
+<script src="src/app/course-navigation.js?v=7"></script>
 </body>
 </html>

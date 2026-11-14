@@ -3,6 +3,7 @@ import logging
 import sys
 import os
 import signal
+import threading
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -47,12 +48,14 @@ if __name__ == "__main__":
 
     def shutdown(sig, frame):
         logging.info("Shutting down...")
-        server.shutdown()
-        sys.exit(0)
+        threading.Thread(target=server.shutdown, daemon=True).start()
 
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
 
     logging.info("Starting server on %s:%s, serving %s", bind, port, directory)
     sys.stdout.flush()
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    finally:
+        server.server_close()

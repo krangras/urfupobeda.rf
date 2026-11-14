@@ -83,7 +83,7 @@
   }
 
   function forceStaticLabels() {
-    setText(document.querySelector('.hero-subtitle'), '\u041f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0430 \u043a \u044d\u043a\u0437\u0430\u043c\u0435\u043d\u0430\u043c');
+    setText(document.querySelector('.hero-subtitle'), 'Билеты, задачи и конспекты');
     setText(document.querySelector('.sidebar-pin-label'), '\u041a\u0443\u0440\u0441\u044b');
     setText(document.querySelector('.sidebar-progress-label'), '\u041f\u0440\u043e\u0433\u0440\u0435\u0441\u0441');
 
@@ -92,11 +92,6 @@
       setText(toolbar.querySelector('.btn-save'), '\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441');
       setText(toolbar.querySelector('.btn-load'), '\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043f\u0440\u043e\u0433\u0440\u0435\u0441\u0441');
     }
-
-    const sem1Tabs = document.querySelectorAll('#semester1-pane > .sub-tabs .sub-tab-btn');
-    setText(sem1Tabs[0], '\u0410\u043b\u0433\u0435\u0431\u0440\u0430, \u0433\u0435\u043e\u043c\u0435\u0442\u0440\u0438\u044f \u0438 \u0422\u0414\u0423');
-    setText(sem1Tabs[1], '\u041c\u0430\u0442\u0435\u043c\u0430\u0442\u0438\u043a\u0430');
-    setText(sem1Tabs[2], '\u0414\u0438\u0441\u043a\u0440\u0435\u0442\u043d\u0430\u044f \u043c\u0430\u0442\u0435\u043c\u0430\u0442\u0438\u043a\u0430');
 
     setHtml(document.querySelector('.disclaimer'), '<strong>\u0412\u0430\u0436\u043d\u043e:</strong> \u043f\u0435\u0440\u0435\u0434 \u044d\u043a\u0437\u0430\u043c\u0435\u043d\u043e\u043c \u043f\u0435\u0440\u0435\u043f\u0440\u043e\u0432\u0435\u0440\u044f\u0439 \u0444\u043e\u0440\u043c\u0443\u043b\u044b \u0438 \u043e\u0442\u0432\u0435\u0442\u044b \u043f\u043e \u043f\u0435\u0440\u0432\u043e\u0438\u0441\u0442\u043e\u0447\u043d\u0438\u043a\u0443.');
   }
@@ -129,10 +124,12 @@
     const practiceActive = document.getElementById('exam-tasks-pane')?.classList.contains('active-pane');
     const physicsActive = document.getElementById('physics-ntk-pane')?.classList.contains('active-pane');
     const examActive = document.getElementById('exam-pane')?.classList.contains('active-pane');
+    const probabilityActive = document.getElementById('probability-pane')?.classList.contains('active-pane');
     tabs.querySelectorAll('.tab-btn').forEach((button) => {
       const shouldBe = button.dataset.uxTab === 'semester1' ? sem1Active
         : button.dataset.tab === 'exam-tasks' ? practiceActive
           : button.dataset.tab === 'physics-ntk' ? physicsActive
+            : button.dataset.tab === 'probability' ? probabilityActive
             : button.dataset.tab === 'exam' ? examActive
               : false;
       button.classList.toggle('active', Boolean(shouldBe));
@@ -145,24 +142,39 @@
     const exam = tabs.querySelector('[data-tab="exam"]');
     const practice = tabs.querySelector('[data-tab="exam-tasks"]');
     const physics = tabs.querySelector('[data-tab="physics-ntk"]');
-    setText(exam, '2 \u0441\u0435\u043c\u0435\u0441\u0442\u0440 \xb7 \u0431\u0438\u043b\u0435\u0442\u044b');
-    setText(practice, '\u041f\u0440\u0430\u043a\u0442\u0438\u043a\u0430');
-    setText(physics, '\u0424\u0438\u0437\u0438\u043a\u0430');
+    const labelTab = (button, subject, description) => {
+      if (!button) return;
+      let title = button.querySelector('.tab-subject');
+      let subtitle = button.querySelector('.tab-description');
+      if (!title || !subtitle) {
+        title = document.createElement('span');
+        title.className = 'tab-subject';
+        subtitle = document.createElement('span');
+        subtitle.className = 'tab-description';
+        button.replaceChildren(title, subtitle);
+      }
+      setText(title, subject);
+      setText(subtitle, description);
+    };
+    labelTab(exam, 'АГиТДУ', '2 семестр · теория');
+    labelTab(practice, 'АГиТДУ', '2 семестр · практика');
+    labelTab(physics, 'Физика', 'НТК');
+    const probability = tabs.querySelector('[data-tab="probability"]');
+    labelTab(probability, 'Теория вероятностей', '3 семестр · теория');
 
     let sem1 = tabs.querySelector('[data-ux-tab="semester1"]');
     if (!sem1) {
-      sem1 = document.createElement('div');
+      sem1 = document.createElement('button');
+      sem1.type = 'button';
       sem1.className = 'tab-btn';
       sem1.dataset.uxTab = 'semester1';
       sem1.tabIndex = 0;
       sem1.addEventListener('click', switchSemester1);
-      sem1.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); switchSemester1(); }
-      });
-    }
-    setText(sem1, '1 \u0441\u0435\u043c\u0435\u0441\u0442\u0440');
 
-    const desired = [sem1, exam, practice, physics].filter(Boolean);
+    }
+    labelTab(sem1, 'АГиТДУ', '1 семестр · теория');
+
+    const desired = [probability, sem1, exam, practice, physics].filter(Boolean);
     const current = Array.from(tabs.children).filter((el) => el.classList?.contains('tab-btn'));
     const sameOrder = desired.length === current.length && desired.every((el, i) => current[i] === el);
     if (!sameOrder) desired.forEach((el) => tabs.appendChild(el));
