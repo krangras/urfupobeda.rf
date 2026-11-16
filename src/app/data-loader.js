@@ -4,7 +4,7 @@
 (function () {
     'use strict';
 
-    var BUILD = window.BUILD_VERSION || '6';
+    var BUILD = window.BUILD_VERSION || '8';
 
     var SOURCES = {
         conspects: 'src/data/conspects.js',

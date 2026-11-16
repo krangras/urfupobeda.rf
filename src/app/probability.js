@@ -4,7 +4,7 @@
     const KEY = 'probability_progress_v1';
     const INTERVALS = [1, 3, 7, 14, 30];
     let data, progress = readProgress();
-    let pane, generation = 0, lastAction = null;
+    let pane, generation = 0, lastAction = null, view = 'tickets';
 
     function cleanProgress(raw) {
         const result = { version: 2, tickets: {}, legacyTickets: {} };
@@ -134,8 +134,29 @@
         list.querySelector('.ux-filter-count').textContent = filter === 'all' ? `${entries.length} билетов` : `${shown} из ${entries.length}`;
     }
 
+    function viewNavigation() {
+        const nav = node('nav', 'sub-tabs prob-course-nav');
+        nav.setAttribute('aria-label', 'Разделы теории вероятностей');
+        [['tickets', 'Билеты'], ['practice', 'Практика']].forEach(([id, label]) => {
+            const link = button(label, () => open(id), 'sub-tab-btn');
+            link.dataset.probView = id;
+            link.classList.toggle('active', view === id);
+            if (view === id) link.setAttribute('aria-current', 'page');
+            nav.append(link);
+        });
+        return nav;
+    }
+
+    function renderCurrentView(target) {
+        pane.dataset.probabilityView = view;
+        if (view === 'practice') {
+            pane.replaceChildren(viewNavigation());
+            window.ProbabilityPractice.render(pane, data.tickets, target);
+        } else renderExamShell();
+    }
+
     function renderExamShell() {
-        pane.replaceChildren();
+        pane.replaceChildren(viewNavigation());
         const original = document.getElementById('exam-pane');
         [...original.children].forEach(child => {
             if (child.id === 'list' || child.classList.contains('button-group')) return;
@@ -169,7 +190,10 @@
             const study = action('✅ Изучить', () => advance(item.id), 'action-btn prob-advance');
             const history = action('📜', () => showHistory(item.id), 'action-btn');
             history.setAttribute('aria-label', `История билета ${item.id}`);
-            actions.append(undo, study, history); header.append(title, actions);
+            const practice = action(item.practice?.length ? `Практика (${item.practice.length})` : 'Практика', () => open('practice', item.id), 'action-btn prob-practice-open');
+            practice.disabled = !item.practice?.length;
+            practice.title = item.practice?.length ? `Открыть задачи к билету ${item.id}` : 'Задачи к этому билету пока не добавлены';
+            actions.append(undo, study, history, practice); header.append(title, actions);
             const meta = node('div', 'ticket-meta');
             const sheet = node('div', 'cheatsheet');
             if (item.content) {
@@ -262,9 +286,11 @@
         }
         if (run !== generation) return;
         pane.removeAttribute('aria-busy');
+        view = (nextView || localStorage.getItem('probability_view')) === 'practice' ? 'practice' : 'tickets';
+        localStorage.setItem('probability_view', view);
         progress = readProgress();
-        renderExamShell();
-        if (target) {
+        renderCurrentView(target);
+        if (target && view === 'tickets') {
             const card = pane.querySelector(`[data-item-id="${Number(target)}"]`);
             card?.querySelector('.ticket-title')?.click();
             requestAnimationFrame(() => card?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
@@ -277,11 +303,12 @@
         open,
         reload() {
             progress = readProgress(); lastAction = null;
-            if (data && pane?.classList.contains('active-pane')) renderExamShell();
+            view = localStorage.getItem('probability_view') === 'practice' ? 'practice' : 'tickets';
+            if (data && pane?.classList.contains('active-pane')) renderCurrentView();
             window.CourseNavigation?.refresh();
         },
         exportProgress: () => readProgress(),
-        importProgress(raw) { progress = cleanProgress(raw); lastAction = null; save(); if (data && pane?.classList.contains('active-pane')) renderExamShell(); },
+        importProgress(raw) { progress = cleanProgress(raw); lastAction = null; save(); if (data && pane?.classList.contains('active-pane')) renderCurrentView(); },
         ticketStep: id => readProgress().tickets[id]?.step || 0
     };
     window.addEventListener('storage', event => { if (event.key === KEY || event.key === null) window.ProbabilityCourse.reload(); });

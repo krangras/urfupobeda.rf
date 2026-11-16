@@ -18,7 +18,7 @@
     { id: 'physics', title: 'Физика · НТК', subtitle: 'Механика, МКТ и электричество', count: '9', source: 'physics' },
     { id: 'integrals', title: 'Математика · 1 семестр · интегралы', subtitle: 'Интегральное исчисление', count: '9', source: 'integrals' },
     { id: 'discrete', title: 'Дискретная математика · 1 семестр', subtitle: 'Материалы курса', count: 'Скоро' },
-    { id: 'probability', title: 'Теория вероятностей · подготовка к экзамену', subtitle: '3 семестр · билеты к экзамену', count: '18', source: 'probability' }
+    { id: 'probability', title: 'Теория вероятностей · подготовка к экзамену', subtitle: '3 семестр · билеты и практика', count: '18', source: 'probability' }
   ];
   let nav, input, empty, yearDetails;
   let years = [];
@@ -130,11 +130,20 @@
             if (INTEGRALS_DATA[`section${index + 1}`]) content.append(link(course, title, index + 1));
           });
         } else if (course.id === 'probability') {
+          const theory = disclosure('Билеты', 'probability:tickets', 'course-topic');
           PROBABILITY_DATA.tickets.forEach(ticket => {
             const item = link(course, `${ticket.id}. ${ticket.title}`, `tickets:${ticket.id}`, 'course-ticket');
             item.dataset.probTicket = ticket.id;
-            content.append(item);
+            theory.body.append(item);
           });
+          content.append(theory.details);
+          const practiceTickets = PROBABILITY_DATA.tickets.filter(ticket => ticket.practice?.length);
+          if (practiceTickets.length) {
+            const count = practiceTickets.reduce((n, ticket) => n + ticket.practice.length, 0);
+            const practice = disclosure(`Практика · ${count} задач`, 'probability:practice', 'course-topic');
+            practiceTickets.forEach(ticket => practice.body.append(link(course, `Билет ${ticket.id}. ${ticket.title}`, `practice:${ticket.id}`)));
+            content.append(practice.details);
+          }
         } else if (course.id === 'control') {
           typeConfig.forEach((type, index) => content.append(link(course, type.title, index)));
         } else {
@@ -171,7 +180,7 @@
       }
     } else if (['semester1', 'integrals', 'discrete'].includes(course.id)) {
       if (course.id === 'integrals') await window.DataLoader.load('semester1');
-      switchToSemester1Subtab({ semester1: 'agidu', integrals: 'math', discrete: 'discrete' }[course.id]);
+      await switchToSemester1Subtab({ semester1: 'agidu', integrals: 'math', discrete: 'discrete' }[course.id]);
       await frames();
       if (course.id === 'semester1' && target !== '') {
         document.querySelector('#semester1-agidu-list [data-filter="all"]')?.click();
@@ -227,6 +236,7 @@
     requestAnimationFrame(() => {
       refreshQueued = false;
       const active = activeCourse();
+      const probabilityProgress = nav.querySelector('[data-prob-ticket]') ? window.ProbabilityCourse?.exportProgress().tickets : null;
       courses.forEach(course => {
         course.details.classList.toggle('course-active', course.id === active);
         const progress = course.id === 'semester2' ? state : course.id === 'semester1' ? semester1State : null;
@@ -236,7 +246,7 @@
           button.classList.toggle('course-learning', step > 0 && step < 5);
         });
         course.body.querySelectorAll('[data-prob-ticket]').forEach(button => {
-          const step = window.ProbabilityCourse?.ticketStep(button.dataset.probTicket) || 0;
+          const step = probabilityProgress?.[button.dataset.probTicket]?.step || 0;
           button.classList.toggle('course-mastered', step >= 5);
           button.classList.toggle('course-learning', step > 0 && step < 5);
         });

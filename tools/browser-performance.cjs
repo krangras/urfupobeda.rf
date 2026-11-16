@@ -1,0 +1,24 @@
+module.exports = async ({evaluate:e,waitFor,assert}) => {
+  await e("document.querySelector('[data-tab=physics-ntk]').click()");
+  await waitFor("document.querySelector('#physics-ntk-kinematika-list .phys-card .katex')",'active physics formulas');
+  const cached=await e(`(async()=>{const root=document.getElementById('physics-ntk-kinematika-list'),cards=[...root.children];await renderPhysicsNtk();return root.children.length===cards.length&&cards.every((card,i)=>root.children[i]===card)})()`);
+  assert.equal(cached,true,'Unchanged physics reuses all cards');
+  const changed=await e(`(async()=>{const root=document.getElementById('physics-ntk-kinematika-list'),cards=[...root.children],checkbox=root.querySelector('input[type=checkbox]');checkbox.checked=!checkbox.checked;checkbox.dispatchEvent(new Event('change',{bubbles:true}));togglePhysicsSolution('kinematika',0);await katexQueue;return{otherCardsKept:cards.slice(1).every((card,i)=>root.children[i+1]===card),firstChanged:root.firstElementChild!==cards[0],marked:root.firstElementChild.classList.contains('completed')===physicsProgress.kinematika_0}})()`);
+  assert.deepEqual(changed,{otherCardsKept:true,firstChanged:true,marked:true});
+  await e("document.querySelector('#physics-ntk-pane [data-subtab=elektrostatika]').click()");
+  await waitFor("document.querySelector('#physics-ntk-elektrostatika-list .phys-card .katex')",'new physics section');
+  await e("switchToSemester1Subtab('agidu')");
+  assert.equal(await e("document.querySelector('#physics-ntk-pane .sub-tab-btn.active').dataset.subtab"),'elektrostatika','Semester1 does not clear physics selection');
+  await e("document.querySelector('[data-tab=physics-ntk]').click()");
+  assert.equal(await e("document.getElementById('physics-ntk-elektrostatika').classList.contains('active-sub-pane')"),true);
+  const serial=await e(`(async()=>{await katexQueue;const math=window.renderMathInElement,calls=[],roots=[];const host=document.getElementById('physics-ntk-elektrostatika');try{window.renderMathInElement=el=>{calls.push(el.dataset.testMath);const start=performance.now();while(performance.now()-start<9){} };for(const id of ['a1','a2','a3','b1']){const el=document.createElement('div');el.dataset.testMath=id;roots.push(el);host.append(el)}const first=typesetKaTeX(roots.slice(0,3),()=>calls.push('a-done'));const second=typesetKaTeX(roots.slice(3),()=>calls.push('b-done'));await Promise.all([first,second]);return calls}finally{window.renderMathInElement=math;roots.forEach(el=>el.remove())}})()`);
+  assert.deepEqual(serial,['a1','a2','a3','a-done','b1','b-done'],'Math jobs wait for all chunks before the next job');
+  const hidden=await e(`(async()=>{let rendered=0,completed=0;const math=window.renderMathInElement,root=document.createElement('div');document.getElementById('physics-ntk-kinematika').append(root);try{window.renderMathInElement=()=>rendered++;await typesetKaTeX([root],()=>completed++);return{rendered,completed}}finally{window.renderMathInElement=math;root.remove()}})()`);
+  assert.deepEqual(hidden,{rendered:0,completed:1},'Hidden sections do not spend CPU typesetting');
+  await e("document.querySelector('#physics-ntk-pane [data-subtab=kinematika]').click()");
+  await e(`(async()=>{await katexQueue;physicsAnswers.kinematika_0_sol=physicsAnswers.kinematika_0_sol==='1'?'0':'1';await renderPhysicsNtk('kinematika');window.cancelledPhysicsCard=document.querySelector('#physics-ntk-kinematika-list .phys-card');await ProbabilityCourse.open('tickets');await katexQueue})()`);
+  await e("document.querySelector('[data-tab=physics-ntk]').click()");
+  await waitFor("document.querySelector('#physics-ntk-kinematika-list .phys-card .katex')",'resumed formulas after fast tab switch');
+  assert.equal(await e("document.querySelector('#physics-ntk-kinematika-list .phys-card')===window.cancelledPhysicsCard"),true,'Cancelled formula work resumes on cached cards');
+  console.log('PASS: physics DOM cache, single-card invalidation, preserved section selection, serialized math jobs and skipped hidden work');
+};

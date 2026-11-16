@@ -27,7 +27,7 @@ assert.equal(
     'Ticket 1 must preserve the complete supplied text, including formulas and original wording'
 );
 assert.equal(new Set(data.tickets.map(t => t.id)).size, 18);
-assert.equal(data.tickets.filter(t => t.content).length, 2);
+assert.equal(data.tickets.filter(t => t.content).length, 3);
 assert.ok(data.tickets.every(t => t.title && t.status));
 // The public persistence API must reject malformed imported state and preserve valid state.
 // Instrument pure review functions in this VM only; no test API is added to the app.

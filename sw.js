@@ -1,4 +1,4 @@
-const CACHE = 'urfupobeda-notebook-v25';
+const CACHE = 'urfupobeda-notebook-v29';
 const SHELL = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const SHELL = [
   './src/app/ux-enhancements.js',
   './src/app/course-navigation.js',
   './src/app/probability.js',
+  './src/app/probability-practice.js',
   './src/app/ticket-copy.js',
   './src/data/probability_data.js',
   './src/auth/firebase-init.js',

@@ -535,11 +535,13 @@ function _getProgressStats() {
   if (typeof INTEGRALS_DATA !== 'undefined') Object.entries(INTEGRALS_DATA).forEach(([s,tasks])=>tasks.forEach((_,i)=>integrals.add(`s${s.replace('section','')}_t${i}`)));
   const done = key => readStoredJSON(key, []).filter(t=>t && t.step>=5).length;
   const probability = readStoredJSON('probability_progress_v1', {});
+  const probabilityPractice = window.ProbabilityPractice.stats(typeof PROBABILITY_DATA === 'undefined' ? [] : PROBABILITY_DATA.tickets);
   return {
     tickets_total: (typeof ticketsData === 'undefined' ? 0 : ticketsData.length) + (typeof SEMESTER1_DATA === 'undefined' ? 0 : SEMESTER1_DATA.length),
     tickets_done: done('exam_manager_v9') + done('semester1_progress'),
     probability_total: typeof PROBABILITY_DATA === 'undefined' ? 0 : PROBABILITY_DATA.tickets.length,
     probability_done: Object.values(probability.tickets || {}).filter(t=>t?.step>=5).length,
+    probability_practice_total: probabilityPractice.total, probability_practice_done: probabilityPractice.solved,
     tasks_total:practice.size,tasks_done:count('exam_tasks_progress',practice),
     kr_total:control.size,kr_done:count('kr_progress',control),
     physics_total:physics.size,physics_done:count('physics_progress',physics),
@@ -596,6 +598,7 @@ async function openProfile() {
       '</div>' +
       '<div class="profile-section-title">Прогресс</div>' +
       '<div class="profile-stats">' +
+        _statCard(s.probability_practice_done, s.probability_practice_total, 'Практика по теории вероятностей') +
         _statCard(s.probability_done, s.probability_total, '\u0422\u0435\u043e\u0440\u0438\u044f \u0432\u0435\u0440\u043e\u044f\u0442\u043d\u043e\u0441\u0442\u0435\u0439') +
         _statCard(s.tickets_done, s.tickets_total, 'Билеты АГиТДУ') +
         _statCard(s.tasks_done, s.tasks_total, 'Задачи экзамена') +

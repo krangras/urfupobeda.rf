@@ -108,8 +108,12 @@
 
     function init() {
         let queued = false;
-        new MutationObserver(() => {
+        new MutationObserver(records => {
             if (queued) return;
+            // Formula rendering and answer feedback do not create ticket action bars.
+            const hasNewActions = records.some(record => [...record.addedNodes].some(node => node.nodeType === 1
+                && (node.matches('.ticket, .action-buttons') || node.querySelector('.ticket, .action-buttons'))));
+            if (!hasNewActions) return;
             queued = true;
             requestAnimationFrame(() => { queued = false; attachButtons(); });
         }).observe(document.querySelector('.main-content'), { childList: true, subtree: true });

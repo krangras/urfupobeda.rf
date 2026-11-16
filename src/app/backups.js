@@ -17,6 +17,9 @@ function buildFullBackup() {
         examTasks: readStoredJSON('exam_tasks_progress', {}), examMatrixAnswers: readStoredJSON('exam_matrix_answers', {}),
         physics: readStoredJSON('physics_progress', {}), physicsAnswers: readStoredJSON('physics_answers', {}),
         probability: window.ProbabilityCourse?.exportProgress() || readStoredJSON('probability_progress_v1', {}),
+        probabilityPractice: window.ProbabilityPractice.exportProgress(),
+        probabilityView: localStorage.getItem('probability_view') || 'tickets',
+        probabilityPracticeTicket: localStorage.getItem('probability_practice_ticket') || '1',
         integralsSectionsState: readStoredJSON('integrals_sections_state', {}),
         activeTab: localStorage.getItem('active_tab') || 'exam',
         semester1Subtab: localStorage.getItem('semester1_subtab') || 'agidu'
@@ -26,7 +29,7 @@ function buildFullBackup() {
 async function prepareBackup(input) {
     const data = Array.isArray(input) ? { tickets: input } : input;
     const record = value => value && typeof value === 'object' && !Array.isArray(value);
-    if (!record(data) || (!data.tickets && !data.probability)) throw new Error('Неверный формат сохранения');
+    if (!record(data) || (!data.tickets && !data.probability && !data.probabilityPractice)) throw new Error('Неверный формат сохранения');
     for (const field of ['tickets', 'semester1']) {
         if (field in data && !Array.isArray(data[field])) throw new Error(`Некорректное поле ${field}`);
         for (const entry of data[field] || []) {
@@ -46,6 +49,7 @@ async function prepareBackup(input) {
     if (data.physicsAnswers && Object.values(data.physicsAnswers).some(v => !scalar(v))) throw new Error('Некорректные ответы физики');
     if (data.examMatrixAnswers && Object.values(data.examMatrixAnswers).some(v => !record(v) || Object.values(v).some(x => !scalar(x)))) throw new Error('Некорректные ответы практики');
     if (data.probability?.tickets && (!record(data.probability.tickets) || Object.values(data.probability.tickets).some(t => !record(t) || !Number.isInteger(t.step) || t.step < 0 || t.step > 5))) throw new Error('Некорректный прогресс тервера');
+    const probabilityPractice = 'probabilityPractice' in data ? window.ProbabilityPractice.validateProgress(data.probabilityPractice) : null;
     const needed = new Set();
     if (data.semester1) needed.add('semester1');
     if (data.integrals) needed.add('integrals');
@@ -89,14 +93,18 @@ async function prepareBackup(input) {
         encode('exam_matrix_answers', filterMap(data.examMatrixAnswers, valid));
     }
     if (data.probability) encode('probability_progress_v1', window.ProbabilityCourse.normalizeProgress(data.probability));
+    if (probabilityPractice) encode('probability_practice_v1', probabilityPractice);
     const activeTab = ['exam','semester1','exam-tasks','physics-ntk','probability'].includes(data.activeTab) ? data.activeTab : null;
     const subtab = ['agidu','math','discrete'].includes(data.semester1Subtab) ? data.semester1Subtab : 'agidu';
-    return { changes, activeTab, subtab, sections: data.integralsSectionsState, date: typeof data.date === 'string' ? data.date : '' };
+    const practicePreferences = {};
+    if ('probabilityView' in data) practicePreferences.probability_view = data.probabilityView === 'practice' ? 'practice' : 'tickets';
+    if (/^[1-9]\d{0,3}$/.test(String(data.probabilityPracticeTicket || ''))) practicePreferences.probability_practice_ticket = String(data.probabilityPracticeTicket);
+    return { changes, activeTab, subtab, practicePreferences, sections: data.integralsSectionsState, date: typeof data.date === 'string' ? data.date : '' };
 }
 
 async function applyBackup(data) {
     const prepared = await prepareBackup(data); // All validation and loading finish before any writes.
-    const preferences = { semester1_subtab: prepared.subtab };
+    const preferences = { semester1_subtab: prepared.subtab, ...prepared.practicePreferences };
     if (prepared.activeTab) preferences.active_tab = prepared.activeTab;
     if (prepared.sections) preferences.integrals_sections_state = JSON.stringify(prepared.sections);
     commitProgressBatch(prepared.changes, preferences);
@@ -123,7 +131,7 @@ async function refreshStoredModels() {
         document.querySelectorAll('[id^="physics-ntk-"][id$="-list"], #semester1-agidu-list, #semester1-math-content, #exam-tasks-content, #control-tasks').forEach(el => el.replaceChildren());
         window.ProbabilityCourse?.reload();
         await loadActiveTab();
-        render(); updatePace();
+        updatePace(); updateRankUI(); updateTabTitle();
         window.CourseNavigation?.refresh();
     } finally { restoringProgress = false; }
 }

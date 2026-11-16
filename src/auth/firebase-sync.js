@@ -2,7 +2,7 @@ const SYNC_KEYS = [
   'exam_manager_v9', 'semester1_progress',
   'kr_progress', 'exam_tasks_progress', 'integrals_progress',
   'physics_progress', 'physics_answers',
-  'exam_matrix_answers', 'probability_progress_v1'
+  'exam_matrix_answers', 'probability_progress_v1', 'probability_practice_v1'
 ];
 
 let syncTimer = null;
@@ -93,7 +93,7 @@ function scheduleFirestoreSync() {
 // ── localStorage write helpers ─────────────────────────────────────
 function commitProgressBatch(changes, preferences = {}) {
   const keys = Object.keys(changes).filter(key => SYNC_KEYS.includes(key));
-  const preferenceKeys = Object.keys(preferences).filter(key => ['active_tab', 'semester1_subtab', 'integrals_sections_state'].includes(key));
+  const preferenceKeys = Object.keys(preferences).filter(key => ['active_tab', 'semester1_subtab', 'integrals_sections_state', 'probability_view', 'probability_practice_ticket'].includes(key));
   const rollback = new Map([...keys, ...preferenceKeys, '_keyVersions', progressBucketKey(_activeOwner)].map(key => [key, localStorage.getItem(key)]));
   const versions = getKeyVersions();
   let changed = false;

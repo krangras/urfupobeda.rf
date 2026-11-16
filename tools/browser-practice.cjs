@@ -1,0 +1,55 @@
+module.exports = async ({evaluate:e,call,waitFor,assert}) => {
+  await e("ProbabilityCourse.open('tickets')");
+  await waitFor("document.querySelector('#probability-ticket-list [data-item-id=\"1\"] .prob-practice-open')",'practice link');
+  await e("document.querySelector('#probability-ticket-list [data-item-id=\"1\"] .prob-practice-open').click()");
+  await waitFor("document.querySelectorAll('#probability-practice-tasks .task-card').length===10",'ten practice tasks');
+  assert.equal(await e("document.querySelectorAll('#probability-practice-tasks .solution, #probability-practice-tasks .hint').length"),0);
+  const enter=async(id,answer)=>e(`(()=>{const input=document.getElementById('prob-task-1-${id}-answer');input.value=${JSON.stringify(answer)};input.dispatchEvent(new Event(input.tagName==='SELECT'?'change':'input',{bubbles:true}));input.form.requestSubmit()})()`);
+  await enter(2,'28abc');
+  assert.equal(await e("document.getElementById('prob-task-1-2-answer').getAttribute('aria-invalid')"),'true');
+  await enter(2,'27');
+  assert.ok((await e("document.getElementById('prob-task-1-2-feedback').textContent")).includes('Неверно'));
+  assert.equal(await e("ProbabilityPractice.exportProgress().tasks['1:2'].completed"),false);
+  await enter(2,'28');
+  assert.equal(await e("document.querySelector('[data-prob-stat=solved]').textContent"),'1');
+  assert.equal(await e("document.getElementById('prob-task-1-2-done').checked"),true);
+  await enter(1,'no');
+  assert.equal(await e("ProbabilityPractice.exportProgress().tasks['1:1'].completed"),false);
+  await e("(()=>{const reason=document.getElementById('prob-task-1-1-reason');reason.value='Обоснование для самопроверки';reason.dispatchEvent(new Event('input',{bubbles:true}));reason.form.requestSubmit()})()");
+  assert.equal(await e("document.querySelector('[data-prob-stat=solved]').textContent"),'2');
+  const backup=await e('buildFullBackup()');
+  assert.equal(backup.probabilityPractice.tasks['1:2'].answer,'28');
+  assert.equal(backup.probabilityPractice.tasks['1:1'].reason,'Обоснование для самопроверки');
+  assert.equal(await e(`(async()=>{const before=JSON.stringify({...localStorage});try{await applyBackup({...buildFullBackup(),probabilityPractice:{tasks:{'1:2':{answer:{},completed:true,checked:true}}}})}catch{}return before===JSON.stringify({...localStorage})})()`),true);
+  await call('Page.reload');
+  await waitFor("document.querySelectorAll('#probability-practice-tasks .task-card').length===10",'restored practice route');
+  assert.equal(await e("document.getElementById('prob-task-1-2-answer').value"),'28');
+  assert.equal(await e("document.querySelector('[data-prob-stat=solved]').textContent"),'2');
+  await e("saveToStorage('probability_practice_v1',JSON.stringify({version:1,tasks:{}}));reinitApp()");
+  assert.equal(await e("document.querySelector('[data-prob-stat=solved]').textContent"),'0');
+  await e(`applyBackup(${JSON.stringify(backup)})`);
+  assert.equal(await e("document.querySelector('[data-prob-stat=solved]').textContent"),'2');
+  assert.equal(await e("_getProgressStats().probability_practice_done"),2);
+  assert.equal(await e("_getProgressStats().probability_practice_total"),10);
+  await e("document.getElementById('prob-task-1-2-answer').value='29';document.getElementById('prob-task-1-2-answer').dispatchEvent(new Event('input',{bubbles:true}))");
+  assert.equal(await e("document.querySelector('[data-prob-stat=solved]').textContent"),'1','Editing clears outdated correctness');
+  await e("ProbabilityCourse.open('practice',2)");
+  assert.equal(await e("document.querySelectorAll('#probability-practice-tasks .task-card').length"),0);
+  assert.ok((await e("document.getElementById('probability-practice-tasks').textContent")).includes('пока не добавлены'));
+  await e("ProbabilityCourse.open('practice',1)");
+  await e("document.getElementById('prob-task-1-3-answer').value='<img src=x onerror=window.practiceXss=1>';document.getElementById('prob-task-1-3-answer').dispatchEvent(new Event('input',{bubbles:true}));ProbabilityCourse.open('practice',1)");
+  assert.equal(await e('window.practiceXss===1'),false);
+  assert.equal(await e("document.getElementById('prob-task-1-3-answer').value"),'<img src=x onerror=window.practiceXss=1>');
+  // Both themes must fit a phone without horizontal page scrolling.
+  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  for(const theme of ['light','dark']) {
+    await e(`document.documentElement.setAttribute('data-theme','${theme}')`);
+    assert.equal(await e('document.documentElement.scrollWidth<=window.innerWidth+1'),true,'Mobile layout '+theme);
+    assert.equal(await e("(()=>{const links=[...document.querySelectorAll('.prob-course-nav button')];return Math.abs(links[0].getBoundingClientRect().top-links[1].getBoundingClientRect().top)<1})()"),true,'Both course tabs fit on one line');
+    assert.equal(await e("document.getElementById('probability-practice-ticket').getBoundingClientRect().width>250"),true,'Ticket selector has readable mobile width');
+  }
+  await call('Emulation.setDeviceMetricsOverride',{width:1280,height:900,deviceScaleFactor:1,mobile:false});
+  await e("document.documentElement.removeAttribute('data-theme');ProbabilityCourse.open('tickets')");
+  assert.equal(await e("ProbabilityCourse.exportProgress().tickets['1']?.step||0"),0,'Practice does not change theory reviews');
+  console.log('PASS: practice UI checking, no hints, explanation boundary, draft persistence, backup roundtrip, reinit, empty tickets, escaping and mobile themes');
+};

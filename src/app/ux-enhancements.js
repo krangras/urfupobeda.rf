@@ -361,8 +361,11 @@
       if (list.dataset.uxObserved) return;
       list.dataset.uxObserved = '1';
       let queued = false;
-      const observer = new MutationObserver(() => {
+      const observer = new MutationObserver(records => {
         if (queued) return;
+        // Ignore KaTeX's internal spans and changes to the filter counter itself.
+        if (!records.some(record => record.target === list || record.target.nodeType === 1
+          && record.target.matches('.ticket-meta, .cheatsheet'))) return;
         queued = true;
         requestAnimationFrame(() => {
           queued = false;

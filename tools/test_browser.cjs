@@ -65,6 +65,9 @@ async function main() {
   await call('Page.addScriptToEvaluateOnNewDocument', {source: "window.auditTimers=[]; const originalInterval=window.setInterval; window.setInterval=(fn,ms,...args)=>{window.auditTimers.push({fn,ms});return originalInterval(fn,ms,...args)};"});
   await call('Page.navigate', { url: `http://127.0.0.1:${port}/` });
   await waitFor("document.readyState==='complete' && !!window.ProbabilityCourse && !!window.CourseNavigation", 'app initialization');
+  assert.equal(await evaluate("typeof PHYSICS_NTK_DATA==='undefined' && !document.querySelector('script[src*=physics_ntk_data]')"),true,'Physics data stays unloaded until the course is opened');
+  await require('./browser-practice.cjs')({evaluate,call,waitFor,delay,assert,errors});
+  await require('./browser-performance.cjs')({evaluate,call,waitFor,delay,assert,errors});
   await require('./browser-regressions.cjs')({evaluate,call,waitFor,delay,assert,errors});
 }
 

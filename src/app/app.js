@@ -518,9 +518,9 @@ function switchToArchiveSubtab(subtab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active-pane'));
     document.getElementById('archive-pane')?.classList.add('active-pane');
-    document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.sub-tab-pane').forEach(p => p.classList.remove('active-sub-pane'));
-    const subBtn = document.querySelector(`.sub-tab-btn[data-subtab="${subtab}"]`);
+    document.querySelectorAll('#archive-pane .sub-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#archive-pane .sub-tab-pane').forEach(p => p.classList.remove('active-sub-pane'));
+    const subBtn = document.querySelector(`#archive-pane .sub-tab-btn[data-subtab="${subtab}"]`);
     if (subBtn) subBtn.classList.add('active');
     if (subtab === 'control') {
         document.getElementById('archive-control')?.classList.add('active-sub-pane');
@@ -544,16 +544,16 @@ function switchToSemester1Subtab(subtab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active-pane'));
     document.getElementById('semester1-pane')?.classList.add('active-pane');
-    document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.sub-tab-pane').forEach(p => p.classList.remove('active-sub-pane'));
-    const subBtn = document.querySelector(`.sub-tab-btn[data-subtab="${subtab}"]`);
+    document.querySelectorAll('#semester1-pane .sub-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#semester1-pane .sub-tab-pane').forEach(p => p.classList.remove('active-sub-pane'));
+    const subBtn = document.querySelector(`#semester1-pane .sub-tab-btn[data-subtab="${subtab}"]`);
     if (subBtn) subBtn.classList.add('active');
     if (subtab === 'agidu') {
         document.getElementById('semester1-agidu')?.classList.add('active-sub-pane');
-        requestAnimationFrame(() => renderSemester1AGiTDU());
+        return renderSemester1AGiTDU();
     } else if (subtab === 'math') {
         document.getElementById('semester1-math')?.classList.add('active-sub-pane');
-        requestAnimationFrame(() => renderSemester1Math());
+        return renderSemester1Math();
     } else if (subtab === 'discrete') {
         document.getElementById('semester1-discrete')?.classList.add('active-sub-pane');
     }
@@ -1135,9 +1135,10 @@ let katexQueue = Promise.resolve();
 
 function typesetKaTeX(elements, doneCallback) {
     if (typeof renderMathInElement === 'undefined') { if (doneCallback) doneCallback(); return; }
-    katexQueue = katexQueue.then(() => {
+    katexQueue = katexQueue.catch(error => console.warn('KaTeX queue:', error)).then(() => new Promise(resolve => {
         const valid = (elements || []).filter(el => el && el.nodeType === 1);
-        if (valid.length === 0) { if (doneCallback) doneCallback(); return; }
+        const finish = () => { try { if (doneCallback) doneCallback(); } finally { resolve(); } };
+        if (valid.length === 0) { finish(); return; }
         const options = {
                     delimiters: [
                         {left: '$$', right: '$$', display: true},
@@ -1156,22 +1157,27 @@ function typesetKaTeX(elements, doneCallback) {
                 };
         let index = 0;
         const renderChunk = () => {
-            const end = Math.min(index + 2, valid.length);
-            while (index < end) {
+            const started = performance.now();
+            while (index < valid.length) {
                 const el = valid[index++];
                 try {
-                    if (el.isConnected && !(el.querySelector && el.querySelector('.katex'))) renderMathInElement(el, options);
+                    const pane = el.closest('.tab-pane'), subPane = el.closest('.sub-tab-pane');
+                    if (el.isConnected && (!pane || pane.classList.contains('active-pane'))
+                        && (!subPane || subPane.classList.contains('active-sub-pane'))
+                        && !el.querySelector('.katex')) renderMathInElement(el, options);
                 } catch (err) {
                     console.log('KaTeX error on element:', err);
                 }
+                if (performance.now() - started >= 8) break;
             }
             if (index < valid.length) {
                 if (window.requestIdleCallback) requestIdleCallback(renderChunk, { timeout: 120 });
                 else setTimeout(renderChunk, 0);
-            } else if (doneCallback) doneCallback();
+            } else finish();
         };
         renderChunk();
-    });
+    }));
+    return katexQueue;
 }
 
 function pluralTasks(n) {
@@ -1568,18 +1574,20 @@ function saveVisiblePhysicsInputs(sectionId) {
     const container = document.getElementById(prefix + '-list');
     if (!container) return;
     if (restoringProgress) return;
+    let changed = false;
     const inputs = container.querySelectorAll('.phys-answer-input');
     for (let i = 0; i < inputs.length; i++) {
         const input = inputs[i];
         const id = input && input.id;
         if (id) {
             const m = id.match(/^phys_input_(.+)$/);
-            if (m) {
+            if (m && String(physicsAnswers[m[1] + '_txt'] ?? '') !== input.value) {
                 physicsAnswers[m[1] + '_txt'] = input.value;
+                changed = true;
             }
         }
     }
-    savePhysicsAnswers();
+    if (changed) savePhysicsAnswers();
 }
 
 function getPhysicsProblem(sectionId, problemIdx) {
@@ -1794,7 +1802,7 @@ function updatePhysicsSectionStats(sectionId) {
             const pct = Math.round(solved / total * 100);
             label += ` <span class="phys-subtab-stats">${solved}/${total} ${pct}%</span>`;
         }
-        subtabBtn.innerHTML = label;
+        if (subtabBtn.innerHTML !== label) subtabBtn.innerHTML = label;
     }
 }
 
@@ -2533,12 +2541,6 @@ function renderExamGroup(groupKey) {
 
     container.innerHTML = cardsHtml;
     typesetKaTeX([container], () => {});
-    const matrixLabels = container.querySelectorAll('.matrix-input-label');
-    if (matrixLabels.length > 0) typesetKaTeX(Array.from(matrixLabels), () => {});
-    const vectorFormulas = container.querySelectorAll('.vector-formula');
-    if (vectorFormulas.length > 0) typesetKaTeX(Array.from(vectorFormulas), () => {});
-    const rankDefBlocks = container.querySelectorAll('.rankdef-row');
-    if (rankDefBlocks.length > 0) typesetKaTeX(Array.from(rankDefBlocks), () => {});
 }
 
 function selectExamGroup(key) {
@@ -2648,7 +2650,6 @@ function initPhysicsNtkSubTabs() {
             }
         });
     });
-    initPhysicsTheoryButtons();
 }
 // ========== ТЕМА (светлая/тёмная) ==========
 const moonIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
@@ -2697,7 +2698,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initState();
     initTabs();
     loadActiveTab();
-    render();
 
     if (typeof analytics !== 'undefined') {
         const initialTab = document.querySelector('.tab-btn.active')?.getAttribute('data-tab') || 'exam';
@@ -3213,9 +3213,7 @@ async function loadActiveTab() {
     const savedTab = localStorage.getItem('active_tab');
     if (savedTab === 'semester1') {
         const subtab = localStorage.getItem('semester1_subtab') || 'agidu';
-        switchToSemester1Subtab(subtab);
-        if (subtab === 'math') await renderSemester1Math();
-        else if (subtab === 'agidu') await renderSemester1AGiTDU();
+        await switchToSemester1Subtab(subtab);
         window.CourseNavigation?.refresh();
         return;
     }
@@ -3284,6 +3282,7 @@ async function renderPhysicsNtkStats() {
     for (const section of PHYSICS_NTK_DATA) {
         total += section.problems.length;
         solved += section.problems.filter((_, idx) => physicsProgress[`${section.id}_${idx}`]).length;
+        updatePhysicsSectionStats(section.id);
     }
     const remaining = Math.max(0, total - solved);
     let anyOpen = false;
@@ -3327,21 +3326,33 @@ async function renderPhysicsNtkStats() {
     `;
 }
 
+const physicsRenderSignatures = new WeakMap();
 async function renderPhysicsNtk(subtabId, onlyProblemIdx) {
-    const savedScrollY = window.scrollY;
     if (typeof PHYSICS_NTK_DATA === 'undefined') {
         try { await window.DataLoader.load('physics'); } catch (err) { console.error(err); return; }
     }
+    initPhysicsTheoryButtons();
     let sectionsToRender;
     if (subtabId) {
         sectionsToRender = PHYSICS_NTK_DATA.filter(s => s.id === subtabId);
     } else {
-        sectionsToRender = PHYSICS_NTK_DATA;
+        const active = document.querySelector('#physics-ntk-pane .sub-tab-btn.active')?.dataset.subtab;
+        sectionsToRender = [PHYSICS_NTK_DATA.find(section => section.id === active) || PHYSICS_NTK_DATA[0]].filter(Boolean);
     }
     for (const section of sectionsToRender) {
         const container = document.getElementById(`physics-ntk-${section.id}-list`);
         if (!container) continue;
         saveVisiblePhysicsInputs(section.id);
+        const signature = JSON.stringify(section.problems.map((_, idx) => {
+            const key = `${section.id}_${idx}`;
+            return [!!physicsProgress[key], ...['opt', 'chk', 'sol', 'txt'].map(suffix => physicsAnswers[`${key}_${suffix}`])];
+        }));
+        if (onlyProblemIdx === undefined && container.firstElementChild && physicsRenderSignatures.get(container) === signature) {
+            // A tab switch may have cancelled formatting while these cards were hidden.
+            const unfinished = [...container.querySelectorAll('.phys-card')].filter(card => !card.querySelector('.katex'));
+            if (unfinished.length) typesetKaTeX(unfinished);
+            continue;
+        }
         if (onlyProblemIdx === undefined) container.innerHTML = '';
         if (section.problems.length === 0) {
             container.innerHTML = '<div class="glass-panel" style="margin: 1rem; padding: 1.2rem; text-align: center; color: var(--pencil);">📖 Задачи будут добавлены позже.</div>';
@@ -3474,6 +3485,7 @@ async function renderPhysicsNtk(subtabId, onlyProblemIdx) {
             ? Array.from(container.querySelectorAll('.phys-card'))
             : [container.querySelector(`[data-phys-key="${section.id}_${onlyProblemIdx}"]`)].filter(Boolean);
         typesetKaTeX(elements, () => {});
+        physicsRenderSignatures.set(container, signature);
     }
     renderPhysicsNtkStats();
 }

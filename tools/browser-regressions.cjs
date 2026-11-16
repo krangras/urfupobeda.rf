@@ -14,6 +14,7 @@ module.exports = async ({evaluate:e,call,waitFor,delay,assert,errors}) => {
   console.log('PASS: full backup, rejected import atomicity, model reload and profile totals');
 
   await e("document.querySelector('[data-tab=physics-ntk]').click()");
+  await e("document.querySelector('#physics-ntk-pane [data-subtab=kinematika]').click()");
   await waitFor("document.querySelector('#physics-ntk-kinematika-list .task-card')",'physics cards');
   const payload='\"><img src=x onerror="window.auditXss=1">';
   const injection=await e(`(()=>{const s=PHYSICS_NTK_DATA.find(s=>s.id==='kinematika');const i=s.problems.findIndex(p=>!p.options?.length);const v=${JSON.stringify(payload)};const input=document.getElementById('phys_input_'+s.id+'_'+i);input.value=v;physicsAnswers[s.id+'_'+i+'_txt']=v;saveToStorage('physics_answers',JSON.stringify(physicsAnswers));renderPhysicsNtk(s.id);return{id:input.id}})()`);
